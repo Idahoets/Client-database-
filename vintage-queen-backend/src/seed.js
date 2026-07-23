@@ -4,14 +4,9 @@ import { getConsignorTasks } from './asana.js';
 // Asana has no concept of the short code used in Clover SKUs/tags, so it has
 // to be maintained here, keyed by Asana task gid (not name - names get
 // typo'd and reformatted). Verified against the real Clover categories/item
-// names pulled from the live account. Two are a bit fuzzy and worth
-// double-checking with the shop:
-//   - "Bob Hendry" (Asana) vs "Ben Hendry" (Clover category name) - same
-//     person assumed, first name mismatch
-//   - "Donna Crow" (Asana) vs code DCOX, i.e. "D. Cox" - assumed maiden/prior
-//     surname, not verified
+// names pulled from the live account, and confirmed with the shop.
 const CODE_BY_TASK_GID = {
-  '1214466985331965': 'HEN',   // Bob Hendry
+  '1214466985331965': 'HEN',   // Ben Hendry - Asana task is titled "Bob Hendry", a typo; see NAME_OVERRIDE
   '1215031968972107': 'DCOX',  // Donna Crow
   '1215842156429837': 'BENN',  // Scott Bennet
   '1215842156429841': 'RUTER', // Rod Ruter
@@ -25,6 +20,12 @@ const CODE_BY_TASK_GID = {
   '1216838570025482': 'SDAN',  // Sue Daniel
   '1216838570025489': 'MCK',   // Cindy Mckellip
   '1216838570025494': 'ANTT'   // Antonia Tamayo
+};
+
+// Corrects known-wrong Asana task titles rather than propagating them into
+// the database - the underlying Asana task itself still says "Bob Hendry".
+const NAME_OVERRIDE = {
+  '1214466985331965': 'Ben Hendry'
 };
 
 const insert = db.prepare(`
@@ -59,7 +60,7 @@ async function seedFromAsana() {
 
     insert.run({
       code,
-      name: t.name,
+      name: NAME_OVERRIDE[t.gid] || t.name,
       type: t.type,
       contract_start: t.contractStart,
       contract_end: t.contractEnd,

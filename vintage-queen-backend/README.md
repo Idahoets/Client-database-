@@ -53,14 +53,20 @@ tasks that predate these fields being tracked).
 - 11 active consignors have contract dates in Asana but no Clover code yet
   (Tucker Wardwell, +Anothony/Cindy Maher, Smith Estate/Roxanne, Sue Harrison,
   Cloris Knox, Emily Chamberlin, Steve Dobbs, Steve Money, Lisa Peterson,
-  Mitzi Jenson, Patrick Connor) - likely because they haven't had any Clover
-  sales yet, so no code has shown up in the data. `seed.js` logs a warning
-  and skips each one; add them to `CODE_BY_TASK_GID` once their code is known.
-- 2 likely duplicate Asana tasks, flagged not auto-merged: "Harrison, Sue" /
-  "Sue harrison", and "Carbondale Estate Sale" (appears twice).
-- 2 fuzzy code matches worth double-checking: "Bob Hendry" (Asana) vs "Ben
-  Hendry" (Clover) - assumed same person; "Donna Crow" (Asana) vs code `DCOX`
-  - assumed a prior/maiden surname, not verified.
+  Mitzi Jenson, Patrick Connor) - confirmed: they likely just haven't been
+  entered into Clover yet, or are under a different name there. `seed.js`
+  logs a warning and skips each one; add them to `CODE_BY_TASK_GID` once
+  their code shows up.
+- "Harrison, Sue" / "Sue harrison" and the two "Carbondale Estate Sale" tasks
+  are confirmed duplicates (same person/event). Doesn't currently affect
+  seeding either way - the incomplete copy of each pair is already skipped by
+  the missing-contract-dates check - but they're still flagged on every seed
+  run since `seed.js` can't know that in general; safe to ignore for these two,
+  or clean up in Asana directly (ask if you want that done, since it's an edit
+  to your live Asana project).
+- "Bob Hendry" (Asana) confirmed to be a typo for "Ben Hendry" (Clover) -
+  `NAME_OVERRIDE` in `seed.js` corrects the name at seed time without editing
+  the Asana task itself. "Donna Crow" -> code `DCOX` confirmed correct.
 
 ## Still open
 
