@@ -56,13 +56,16 @@ two identical "Carbondale Estate Sale" tasks. All three verified to have no
 notes/attachments/subtasks before deleting anything.
 
 **Needs input before seeding is complete:**
-- 11 active consignors have contract dates in Asana but no Clover code yet
-  (Tucker Wardwell, +Anothony/Cindy Maher, Smith Estate/Roxanne, Sue Harrison,
-  Cloris Knox, Emily Chamberlin, Steve Dobbs, Steve Money, Lisa Peterson,
-  Mitzi Jenson, Patrick Connor) - confirmed: they likely just haven't been
-  entered into Clover yet, or are under a different name there. `seed.js`
-  logs a warning and skips each one; add them to `CODE_BY_TASK_GID` once
-  their code shows up.
+- 10 active consignors still have contract dates in Asana but no Clover code
+  yet (+Anothony/Cindy Maher, Smith Estate/Roxanne, Sue Harrison, Cloris Knox,
+  Emily Chamberlin, Steve Dobbs, Steve Money, Lisa Peterson, Mitzi Jenson,
+  Patrick Connor) - likely just haven't been entered into Clover yet, or are
+  under a different name there. `seed.js` logs a warning and skips each one;
+  add them to `CODE_BY_TASK_GID` once their code shows up.
+  - Tucker Wardwell is now mapped (`TUCK`, Clover: "Warwell, Tucker (Tuck)"),
+    confirmed by the owner - not yet visible in the Clover data pulled here,
+    since `getItems()` only fetches the most recent 1000 items and has no
+    pagination.
 
 ## Still open
 

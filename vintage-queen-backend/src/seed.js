@@ -6,6 +6,7 @@ import { getConsignorTasks } from './asana.js';
 // typo'd and reformatted). Verified against the real Clover categories/item
 // names pulled from the live account, and confirmed with the shop.
 const CODE_BY_TASK_GID = {
+  '1212988852157040': 'TUCK',  // Tucker Wardwell (Clover: "Warwell, Tucker (Tuck)") - not yet seen in Clover data, confirmed by owner
   '1214466985331965': 'HEN',   // Ben Hendry
   '1215031968972107': 'DCOX',  // Donna Crow
   '1215842156429837': 'BENN',  // Scott Bennet
