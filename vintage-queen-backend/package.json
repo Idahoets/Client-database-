@@ -1,0 +1,17 @@
+{
+  "name": "vintage-queen-backend",
+  "version": "1.0.0",
+  "description": "Clover sync, consignor database, and payout reports for The Vintage Queen",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "sync": "node src/sync.js",
+    "reports": "node src/reports.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
+}
