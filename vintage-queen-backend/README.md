@@ -45,9 +45,10 @@ Dates" free-text range, e.g. "6/26-6/27"), and email.
 
 Asana has no concept of the Clover code, so that's maintained by hand in
 `CODE_BY_TASK_GID` in `seed.js`, cross-checked against real Clover category/
-item names. Currently mapped: 14 consignors. Tasks missing `contract_start`
-or `due_on` are skipped rather than guessed (mostly historical/completed
-tasks that predate these fields being tracked).
+item names where possible, owner-confirmed otherwise. Currently mapped: 23 of
+25 active consignors. Tasks missing `contract_start` or `due_on` are skipped
+rather than guessed (mostly historical/completed tasks that predate these
+fields being tracked).
 
 Asana cleanup done (owner-confirmed): renamed the "Bob Hendry" task to "Ben
 Hendry" (typo), deleted the stale/empty "Harrison, Sue" duplicate (kept "Sue
