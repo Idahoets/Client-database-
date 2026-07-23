@@ -49,6 +49,12 @@ item names. Currently mapped: 14 consignors. Tasks missing `contract_start`
 or `due_on` are skipped rather than guessed (mostly historical/completed
 tasks that predate these fields being tracked).
 
+Asana cleanup done (owner-confirmed): renamed the "Bob Hendry" task to "Ben
+Hendry" (typo), deleted the stale/empty "Harrison, Sue" duplicate (kept "Sue
+harrison", which has the real contract/contact data), and deleted one of the
+two identical "Carbondale Estate Sale" tasks. All three verified to have no
+notes/attachments/subtasks before deleting anything.
+
 **Needs input before seeding is complete:**
 - 11 active consignors have contract dates in Asana but no Clover code yet
   (Tucker Wardwell, +Anothony/Cindy Maher, Smith Estate/Roxanne, Sue Harrison,
@@ -57,16 +63,6 @@ tasks that predate these fields being tracked).
   entered into Clover yet, or are under a different name there. `seed.js`
   logs a warning and skips each one; add them to `CODE_BY_TASK_GID` once
   their code shows up.
-- "Harrison, Sue" / "Sue harrison" and the two "Carbondale Estate Sale" tasks
-  are confirmed duplicates (same person/event). Doesn't currently affect
-  seeding either way - the incomplete copy of each pair is already skipped by
-  the missing-contract-dates check - but they're still flagged on every seed
-  run since `seed.js` can't know that in general; safe to ignore for these two,
-  or clean up in Asana directly (ask if you want that done, since it's an edit
-  to your live Asana project).
-- "Bob Hendry" (Asana) confirmed to be a typo for "Ben Hendry" (Clover) -
-  `NAME_OVERRIDE` in `seed.js` corrects the name at seed time without editing
-  the Asana task itself. "Donna Crow" -> code `DCOX` confirmed correct.
 
 ## Still open
 
