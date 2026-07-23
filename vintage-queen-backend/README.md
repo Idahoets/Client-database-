@@ -56,16 +56,18 @@ two identical "Carbondale Estate Sale" tasks. All three verified to have no
 notes/attachments/subtasks before deleting anything.
 
 **Needs input before seeding is complete:**
-- 10 active consignors still have contract dates in Asana but no Clover code
-  yet (+Anothony/Cindy Maher, Smith Estate/Roxanne, Sue Harrison, Cloris Knox,
-  Emily Chamberlin, Steve Dobbs, Steve Money, Lisa Peterson, Mitzi Jenson,
-  Patrick Connor) - likely just haven't been entered into Clover yet, or are
-  under a different name there. `seed.js` logs a warning and skips each one;
-  add them to `CODE_BY_TASK_GID` once their code shows up.
-  - Tucker Wardwell is now mapped (`TUCK`, Clover: "Warwell, Tucker (Tuck)"),
-    confirmed by the owner - not yet visible in the Clover data pulled here,
-    since `getItems()` only fetches the most recent 1000 items and has no
-    pagination.
+- 8 more mapped by the owner, none yet visible in the Clover data pulled here
+  (`getItems()` only fetches the most recent 1000 items, no pagination):
+  Tucker Wardwell (`TUCK`), +Anothony/Cindy Maher (`MAHER`), Smith Estate/
+  Roxanne (`ROX`), Cloris Knox (`KNOX`), Emily Chamberlin (`CHAMB`), Steve
+  Dobbs (`DOBB`), Steve Money (`MONEY`), Lisa Peterson (`PETE`).
+- **Sue Harrison** was given as code `SDAN` - flagged, not applied. `SDAN` is
+  already Sue Daniel's confirmed code with real synced sales/payout data;
+  assigning the same code to a second person would merge their sales under
+  one record (code is the consignors table's primary key). Needs a
+  double-check before this one gets mapped.
+- Mitzi Jenson and Patrick Connor: confirmed no Clover category exists for
+  them yet (owner-confirmed) - nothing to map until one does.
 
 ## Still open
 

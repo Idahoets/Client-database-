@@ -7,6 +7,13 @@ import { getConsignorTasks } from './asana.js';
 // names pulled from the live account, and confirmed with the shop.
 const CODE_BY_TASK_GID = {
   '1212988852157040': 'TUCK',  // Tucker Wardwell (Clover: "Warwell, Tucker (Tuck)") - not yet seen in Clover data, confirmed by owner
+  '1213886241341084': 'MAHER', // +Anothony/Cindy Maher (Clover: "Cindy Maher (Maher)") - not yet seen in Clover data, confirmed by owner
+  '1214401019501119': 'ROX',   // Smith Estate/Roxanne (Clover: "Roxanne (Rox)") - not yet seen in Clover data, confirmed by owner
+  '1214674428334824': 'KNOX',  // Cloris Knox (Clover: "(Knox)") - not yet seen in Clover data, confirmed by owner
+  '1214751143479477': 'CHAMB', // Emily Chamberlin (Clover: "Chamberlin, Emily (Chamb)") - not yet seen in Clover data, confirmed by owner
+  '1214879282511288': 'DOBB',  // Steve Dobbs (Clover: "Dobbs, Steve (Dobb)") - not yet seen in Clover data, confirmed by owner
+  '1214879282511299': 'MONEY', // Steve Money (Clover: "(Money)") - not yet seen in Clover data, confirmed by owner
+  '1215262766097009': 'PETE',  // Lisa Peterson (Clover: "(Pete)") - not yet seen in Clover data, confirmed by owner
   '1214466985331965': 'HEN',   // Ben Hendry
   '1215031968972107': 'DCOX',  // Donna Crow
   '1215842156429837': 'BENN',  // Scott Bennet
