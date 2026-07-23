@@ -56,16 +56,13 @@ two identical "Carbondale Estate Sale" tasks. All three verified to have no
 notes/attachments/subtasks before deleting anything.
 
 **Needs input before seeding is complete:**
-- 8 more mapped by the owner, none yet visible in the Clover data pulled here
+- 9 more mapped by the owner, none yet visible in the Clover data pulled here
   (`getItems()` only fetches the most recent 1000 items, no pagination):
   Tucker Wardwell (`TUCK`), +Anothony/Cindy Maher (`MAHER`), Smith Estate/
   Roxanne (`ROX`), Cloris Knox (`KNOX`), Emily Chamberlin (`CHAMB`), Steve
-  Dobbs (`DOBB`), Steve Money (`MONEY`), Lisa Peterson (`PETE`).
-- **Sue Harrison** was given as code `SDAN` - flagged, not applied. `SDAN` is
-  already Sue Daniel's confirmed code with real synced sales/payout data;
-  assigning the same code to a second person would merge their sales under
-  one record (code is the consignors table's primary key). Needs a
-  double-check before this one gets mapped.
+  Dobbs (`DOBB`), Steve Money (`MONEY`), Lisa Peterson (`PETE`), Sue Harrison
+  (`SUHA` - confirmed a different person from Sue Daniel/`SDAN`, an earlier
+  given code for her was wrong and not applied).
 - Mitzi Jenson and Patrick Connor: confirmed no Clover category exists for
   them yet (owner-confirmed) - nothing to map until one does.
 
