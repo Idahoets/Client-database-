@@ -1,5 +1,5 @@
 import db from './db.js';
-import { getOrdersSince, isEstateSaleOrder } from './clover.js';
+import { getOrdersSince, classifyOrderChannel } from './clover.js';
 
 // The shop's own stock (not a real consignor) - Clover items/lines tagged
 // "9000 ..." are house items and are always skipped.
@@ -64,9 +64,17 @@ export async function runSync() {
   const orders = await getOrdersSince(since);
   let updated = 0;
   let unmatched = 0;
+  let excluded = 0;
 
   for (const order of orders) {
-    const channel = isEstateSaleOrder(order) ? 'estate_sale' : 'storefront';
+    const channel = classifyOrderChannel(order);
+    if (channel === 'excluded') {
+      // One-off sale (e.g. a warehouse sale) that isn't consignor business -
+      // don't attribute it to any consignor, don't count it toward either
+      // channel's totals.
+      excluded++;
+      continue;
+    }
     const soldStatus = channel === 'estate_sale' ? 'sold_estate' : 'sold_store';
     const soldDate = new Date(order.modifiedTime).toISOString().slice(0, 10);
 
@@ -117,7 +125,7 @@ export async function runSync() {
   }
 
   setLastSyncTime(Date.now());
-  console.log(`Sync complete: ${updated} line items processed from ${orders.length} orders, ${unmatched} unmatched.`);
+  console.log(`Sync complete: ${updated} line items processed from ${orders.length} orders, ${unmatched} unmatched, ${excluded} orders excluded (non-consignor sales).`);
 }
 
 // Run directly with `npm run sync`

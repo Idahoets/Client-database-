@@ -38,15 +38,23 @@ export async function getOrdersSince(sinceMs) {
 
 // Clover order objects don't carry a native "which register/location" flag,
 // but real order history shows the storefront register (one device.id) in
-// use on almost every business day, while estate sales run on a separate
-// device that only shows up for the day or two of that specific sale. List
-// those estate-sale device ids in ESTATE_SALE_DEVICE_IDS (comma-separated)
-// once confirmed - see .env.example for the candidates found so far.
-const ESTATE_DEVICE_IDS = (process.env.ESTATE_SALE_DEVICE_IDS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+// use on almost every business day, while a handful of other devices each
+// only show up for a day or two at a time - those map to one-off events:
+//   - ESTATE_SALE_DEVICE_IDS: confirmed consignor estate sales (40% commission,
+//     payout 7 days after the sale)
+//   - EXCLUDED_DEVICE_IDS: one-off sales that use the same checkout style by
+//     coincidence but aren't consignor business at all (e.g. warehouse sales) -
+//     these orders are skipped entirely, not counted as estate or storefront
+function deviceIdList(envVar) {
+  return (process.env[envVar] || '').split(',').map(s => s.trim()).filter(Boolean);
+}
 
-export function isEstateSaleOrder(order) {
-  return ESTATE_DEVICE_IDS.includes(order.device?.id);
+const ESTATE_DEVICE_IDS = deviceIdList('ESTATE_SALE_DEVICE_IDS');
+const EXCLUDED_DEVICE_IDS = deviceIdList('EXCLUDED_DEVICE_IDS');
+
+export function classifyOrderChannel(order) {
+  const deviceId = order.device?.id;
+  if (EXCLUDED_DEVICE_IDS.includes(deviceId)) return 'excluded';
+  if (ESTATE_DEVICE_IDS.includes(deviceId)) return 'estate_sale';
+  return 'storefront';
 }

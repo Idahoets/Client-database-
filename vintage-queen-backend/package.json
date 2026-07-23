@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "seed": "node src/seed.js",
     "sync": "node src/sync.js",
     "reports": "node src/reports.js"
   },

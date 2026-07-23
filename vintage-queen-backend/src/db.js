@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS consignors (
   name TEXT NOT NULL,
   type TEXT NOT NULL,             -- 'estate' or 'direct'
   contract_start TEXT NOT NULL,   -- ISO date, storefront contract begins
+  contract_end TEXT NOT NULL,     -- ISO date, real contract end (not always exactly +90 days - store the real date, don't compute it)
   estate_sale_date TEXT,          -- ISO date, only set for type='estate'
   contact_email TEXT,
   contact_phone TEXT

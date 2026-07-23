@@ -3,7 +3,6 @@ import db from './db.js';
 
 const COMMISSION = { estate_sale: 0.40, storefront: 0.50 };
 const ESTATE_PAYOUT_DAYS = 7;
-const CONTRACT_DAYS = 90;
 
 function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -45,34 +44,39 @@ export function generateEstatePayoutReports() {
     db.prepare(`
       INSERT INTO reports (consignor_code, report_type, amount, details_json)
       VALUES (?, 'estate_payout', ?, ?)
-    `).run(c.code, total, JSON.stringify({ estate_sale_date: c.estate_sale_date, item_count: items.length }));
+    `).run(c.code, total, JSON.stringify({
+      estate_sale_date: c.estate_sale_date,
+      item_count: items.length,
+      send_to: c.contact_email
+    }));
 
-    console.log(`Estate payout ready for ${c.name} (${c.code}): $${total.toFixed(2)}`);
+    console.log(`Estate payout ready for ${c.name} (${c.code}): $${total.toFixed(2)}${c.contact_email ? ` -> ${c.contact_email}` : ' (no email on file)'}`);
     // TODO: hook up email/notification here once you decide how statements go out
   }
 }
 
 // Storefront statement: everything sold in-store, generated monthly, but only
-// actually payable once the consignor's 90-day contract has ended.
+// actually payable once the consignor's contract has ended (contract_end is
+// the real date from Asana - it isn't reliably contract_start + 90 days).
 export function generateStorefrontStatements() {
   const consignors = db.prepare(`SELECT * FROM consignors`).all();
 
   for (const c of consignors) {
-    const contractEnd = addDays(c.contract_start, CONTRACT_DAYS);
     const items = db.prepare(`
       SELECT * FROM items WHERE consignor_code = ? AND channel = 'storefront' AND status = 'sold_store'
     `).all(c.code);
 
     const total = items.reduce((sum, i) => sum + payoutFor(i), 0);
-    const ready = new Date() >= contractEnd;
+    const ready = new Date() >= new Date(c.contract_end + 'T00:00:00');
 
     db.prepare(`
       INSERT INTO reports (consignor_code, report_type, amount, details_json)
       VALUES (?, 'storefront_statement', ?, ?)
     `).run(c.code, total, JSON.stringify({
-      contract_end: contractEnd.toISOString().slice(0, 10),
+      contract_end: c.contract_end,
       payable: ready,
-      item_count: items.length
+      item_count: items.length,
+      send_to: c.contact_email
     }));
 
     console.log(`Storefront statement for ${c.name} (${c.code}): $${total.toFixed(2)} - ${ready ? 'payable now' : 'accruing'}`);
