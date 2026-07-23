@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/seed.js",
+    "import-items": "node src/items.js",
     "sync": "node src/sync.js",
     "reports": "node src/reports.js"
   },

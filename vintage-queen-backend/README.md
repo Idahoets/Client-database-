@@ -11,6 +11,8 @@ to be and what's still open.
 - `src/db.js` - SQLite schema: consignors, items, sync bookkeeping, generated reports
 - `src/clover.js` - Clover REST API client (items, orders, order channel classification)
 - `src/asana.js` - Asana API client, reads the Client Database project as consignor records
+- `src/skuParser.js` - shared consignor-code matching, used by both `items.js` and `sync.js`
+- `src/items.js` - imports current Clover inventory (regular items only) into the `items` table
 - `src/sync.js` - matches Clover order line items back to consignors by SKU, updates statuses
 - `src/reports.js` - the two payout jobs: estate payout (7 days after each estate sale), storefront statement (monthly, payable at real contract end)
 - `src/server.js` - small API the portal reads from
@@ -67,18 +69,42 @@ notes/attachments/subtasks before deleting anything.
 - Mitzi Jenson and Patrick Connor: confirmed no Clover category exists for
   them yet (owner-confirmed) - nothing to map until one does.
 
+## Item import (`items.js`)
+
+Regular (non-misc) items need a row in `items` before `sync.js` can match a
+sale back to one - `npm run import-items` pulls current Clover inventory and
+creates those rows, using the same code-first/code-last parsing as sync (via
+the shared `skuParser.js`). Misc lots are intentionally *not* pre-listed -
+they have no individual identity in Clover until sold, so `sync.js` still
+creates/bumps their bucket row reactively, same as before.
+
+Channel/status at listing time defaults from the consignor's `type` (estate
+-> `estate_listed`/`estate_sale`, direct -> `in_stock`/`storefront`) - this is
+just a best-effort starting point, since `sync.js` now corrects both
+`status` and `channel` to match the actual sale once an item sells (see
+below), regardless of how it was originally listed.
+
+Found and fixed two related bugs while building this, both real correctness
+issues verified against live data:
+- The regular-item `UPDATE` in `sync.js` only ever set `status`, never
+  `channel`. An estate consignor's leftover item that doesn't sell at the
+  estate sale and later sells at the storefront would end up with
+  `status='sold_store'` but `channel` stuck at `'estate_sale'` from listing -
+  matching neither payout report's `WHERE channel = ... AND status = ...`
+  filter, so the sale would silently vanish from both. Confirmed this
+  actually happens: several of Sue Daniel's items sold weeks after her
+  estate sale weekend. `sync.js` now sets `channel` from the sale's actual
+  order, not just `status`.
+- Regular items are now matched primarily by Clover's own item id (stable
+  even if the tag text is edited later), falling back to `consignor_code +
+  sku` text only for anything sold before it was ever imported.
+
 ## Still open
 
-1. **No item-import step yet.** Regular (non-misc) sold items are matched by
-   `consignor_code + sku` against rows already in the `items` table, but
-   nothing currently populates that table from Clover inventory - only the
-   misc-lot buckets get created automatically during sync. Worth deciding
-   whether items get imported from Clover directly (matching the same
-   code-first/code-last parsing) or entered some other way.
-2. **Decide how statements actually reach consignors** - email, text, printed,
-   posted in the portal only, etc. `reports.js` now includes each consignor's
-   email (from Asana) in the report record, so the data's there - `reports.js`
-   still has a TODO right where the actual send hooks in.
+**Decide how statements actually reach consignors** - email, text, printed,
+posted in the portal only, etc. `reports.js` includes each consignor's email
+(from Asana) in the report record, so the data's there - `reports.js` still
+has a TODO right where the actual send hooks in.
 
 ## Running it (once .env is filled in)
 
@@ -86,6 +112,7 @@ notes/attachments/subtasks before deleting anything.
 npm install
 cp .env.example .env   # then fill in your real Clover + Asana credentials
 npm run seed            # pulls consignors from Asana
-npm run sync             # pulls recent Clover orders and updates the database
-npm start                # starts the API + the two scheduled report jobs
+npm run import-items     # pulls current Clover inventory into the items table
+npm run sync              # pulls recent Clover orders and updates the database
+npm start                 # starts the API + the two scheduled report jobs
 ```

@@ -1,51 +1,6 @@
 import db from './db.js';
 import { getOrdersSince, classifyOrderChannel } from './clover.js';
-
-// The shop's own stock (not a real consignor) - Clover items/lines tagged
-// "9000 ..." are house items and are always skipped.
-const HOUSE_CODE = '9000';
-
-// The consignor code is embedded directly in the Clover item/line-item name,
-// with no consistent separator or casing, and two tagging conventions are in
-// live use:
-//   code-first: "Smc116 Vtg Collins Homestead Axe", "SDAN19 MISC", "ABARN NECKLACE"
-//   code-last:  "Glass/wood Coffe Table Sdan104" (seen mainly on Sdan's furniture)
-// Codes vary too much in length/case for a blind regex to disambiguate
-// reliably, so match against the known consignors table instead - seed real
-// consignors before running sync, or these lines are left unmatched for a
-// manual look (same as any other genuinely unrecognized line item).
-function knownConsignorCodes() {
-  return db.prepare(`SELECT code FROM consignors`).all()
-    .map(r => r.code)
-    .filter(c => c !== HOUSE_CODE)
-    .sort((a, b) => b.length - a.length); // longest first, e.g. "BENN" before "BEN"
-}
-
-function matchToken(token, codes) {
-  const lower = token.toLowerCase();
-  for (const code of codes) {
-    if (!lower.startsWith(code.toLowerCase())) continue;
-    const rest = token.slice(code.length);
-    // after the code: nothing, a run of digits (item # / price point), or a
-    // single letter (jewelry-type shorthand, e.g. "ABARN" -> ABAR + N)
-    if (rest === '' || /^\d+$/.test(rest) || /^[A-Za-z]$/.test(rest)) {
-      return code;
-    }
-  }
-  return null;
-}
-
-function parseSku(text) {
-  if (!text) return null;
-  const tokens = text.trim().split(/\s+/);
-  if (!tokens.length) return null;
-
-  const codes = knownConsignorCodes();
-  const code = matchToken(tokens[0], codes) || matchToken(tokens[tokens.length - 1], codes);
-  if (!code) return null;
-
-  return { code, isMisc: /misc/i.test(text) };
-}
+import { parseSku } from './skuParser.js';
 
 function getLastSyncTime() {
   const row = db.prepare(`SELECT value FROM sync_state WHERE key = 'last_sync_ms'`).get();
@@ -111,14 +66,29 @@ export async function runSync() {
           `).run(parsed.code, order.id, line.id, line.name, price, channel, soldStatus, price, soldDate);
         }
       } else {
-        // Regular items are matched by consignor_code + sku against rows
-        // already listed in the `items` table - there's no import step yet
-        // that creates those rows from Clover inventory, so this currently
-        // only affects items entered some other way (see README).
-        db.prepare(`
-          UPDATE items SET status = ?, sold_price = ?, sold_date = ?, clover_order_id = ?, clover_line_item_id = ?
-          WHERE consignor_code = ? AND sku = ?
-        `).run(soldStatus, price, soldDate, order.id, line.id, parsed.code, line.name);
+        // Regular items are matched against rows created by `npm run
+        // import-items` (see items.js). Prefer the Clover item id - it's
+        // stable even if the item's name/tag text was edited after listing.
+        // Fall back to consignor_code + sku text for anything sold before
+        // it was ever imported. Either way, set `channel` here (not just
+        // `status`) - an item listed as an estate leftover that ends up
+        // selling at the storefront needs its channel corrected to match
+        // the sale, or it won't show up in *either* payout report (both
+        // reports filter on channel AND status together).
+        const itemId = line.item?.id;
+        let result = { changes: 0 };
+        if (itemId) {
+          result = db.prepare(`
+            UPDATE items SET status = ?, sold_price = ?, sold_date = ?, clover_order_id = ?, clover_line_item_id = ?, channel = ?
+            WHERE clover_item_id = ?
+          `).run(soldStatus, price, soldDate, order.id, line.id, channel, itemId);
+        }
+        if (result.changes === 0) {
+          db.prepare(`
+            UPDATE items SET status = ?, sold_price = ?, sold_date = ?, clover_order_id = ?, clover_line_item_id = ?, channel = ?
+            WHERE consignor_code = ? AND sku = ?
+          `).run(soldStatus, price, soldDate, order.id, line.id, channel, parsed.code, line.name);
+        }
       }
       updated++;
     }
