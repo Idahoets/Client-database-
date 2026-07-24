@@ -15,7 +15,8 @@ to be and what's still open.
 - `src/items.js` - imports current Clover inventory (regular items only) into the `items` table
 - `src/sync.js` - matches Clover order line items back to consignors by SKU, updates statuses
 - `src/reports.js` - the two payout jobs: estate payout (7 days after each estate sale), storefront statement (monthly, payable at real contract end)
-- `src/server.js` - small API the portal reads from
+- `src/notify.js` - builds and sends the review/digest/consignor emails (Outlook SMTP); SMS is stubbed until a provider is picked
+- `src/server.js` - small API the portal reads from, plus the approve-link endpoints
 - `src/seed.js` - pulls consignors from Asana, joins in the Clover code (see below), upserts into the `consignors` table
 
 ## What real Clover data looks like here
@@ -99,12 +100,40 @@ issues verified against live data:
   even if the tag text is edited later), falling back to `consignor_code +
   sku` text only for anything sold before it was ever imported.
 
-## Still open
+## Statement delivery - nothing goes to a consignor without approval
 
-**Decide how statements actually reach consignors** - email, text, printed,
-posted in the portal only, etc. `reports.js` includes each consignor's email
-(from Asana) in the report record, so the data's there - `reports.js` still
-has a TODO right where the actual send hooks in.
+Every report (estate payout or storefront statement) is queued for review,
+never sent directly:
+
+1. When a report is generated with something actually owed (>$0), it's
+   emailed to `ACCOUNTING_EMAIL` (accounting@idahoets.com) with the exact
+   drafted message and a one-click **approve** link.
+2. Estate payouts (rare, one consignor at a time as each comes due) get their
+   own review email. Storefront statements (up to ~20 consignors at once,
+   monthly) get **one digest email** instead of one per consignor - a table
+   of every consignor/amount, an individual approve link for each, and one
+   "approve ALL" link for the whole batch.
+3. Nothing reaches the consignor until a link is clicked. Clicking hits
+   `GET /api/reports/:id/approve/:token` (or `/api/reports/batch/:token/approve`
+   for the whole batch), which sends the real message and marks the report
+   `sent`. A failed send (e.g. SMTP not configured) leaves it `pending_review`
+   so it can be retried by clicking again.
+4. Delivery method is picked automatically: **email** if the consignor has one
+   on file, **text** otherwise (now pulled from Asana's Phone field too) - both
+   go through the same approval gate.
+5. $0 / not-yet-payable reports are still recorded in the `reports` table for
+   history, but skip the review email entirely - nothing to approve.
+
+**Needs your input to actually send anything:**
+- `SMTP_USER` / `SMTP_PASSWORD` in `.env` - an Outlook/Office365 app password
+  for whichever mailbox should send. Until this is set, sends are logged
+  ("would have emailed...") instead of going out, so nothing is silently lost.
+- `PUBLIC_BASE_URL` - wherever this app ends up deployed; approve links are
+  built from it and won't work for anyone but you until it points somewhere
+  actually reachable (currently `http://localhost:3000`, which only resolves
+  on the machine running the server).
+- No SMS provider chosen yet - texts log a warning instead of sending
+  (`sendConsignorText` in `notify.js`) until one's picked and wired in.
 
 ## Running it (once .env is filled in)
 

@@ -32,12 +32,13 @@ const CODE_BY_TASK_GID = {
 };
 
 const insert = db.prepare(`
-  INSERT INTO consignors (code, name, type, contract_start, contract_end, estate_sale_date, contact_email)
-  VALUES (@code, @name, @type, @contract_start, @contract_end, @estate_sale_date, @contact_email)
+  INSERT INTO consignors (code, name, type, contract_start, contract_end, estate_sale_date, contact_email, contact_phone)
+  VALUES (@code, @name, @type, @contract_start, @contract_end, @estate_sale_date, @contact_email, @contact_phone)
   ON CONFLICT(code) DO UPDATE SET
     name = excluded.name, type = excluded.type,
     contract_start = excluded.contract_start, contract_end = excluded.contract_end,
-    estate_sale_date = excluded.estate_sale_date, contact_email = excluded.contact_email
+    estate_sale_date = excluded.estate_sale_date, contact_email = excluded.contact_email,
+    contact_phone = excluded.contact_phone
 `);
 
 async function seedFromAsana() {
@@ -68,7 +69,8 @@ async function seedFromAsana() {
       contract_start: t.contractStart,
       contract_end: t.contractEnd,
       estate_sale_date: t.estateSaleDate,
-      contact_email: t.email
+      contact_email: t.email,
+      contact_phone: t.phone
     });
     seeded++;
   }

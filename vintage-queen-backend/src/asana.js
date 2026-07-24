@@ -6,6 +6,7 @@ const PROJECT_ID = process.env.ASANA_PROJECT_ID;
 // Match custom fields by gid, not name - a couple of fields in this project
 // have had duplicate/junk fields with the same display name before.
 const FIELD = {
+  phone: '1212596660527246',
   email: '1212596660527248',
   contractStart: '1216838717056492',
   estateSaleDates: '1216838570025456'
@@ -77,6 +78,7 @@ export async function getConsignorTasks() {
       seen.set(key, { task: name, gid: task.gid });
     }
 
+    const phone = fieldValue(task, FIELD.phone);
     const email = fieldValue(task, FIELD.email);
     const contractStart = fieldValue(task, FIELD.contractStart);
     const estateSaleDatesRaw = fieldValue(task, FIELD.estateSaleDates);
@@ -86,6 +88,7 @@ export async function getConsignorTasks() {
       gid: task.gid,
       name,
       email,
+      phone,
       contractStart,
       estateSaleDate: parseEstateSaleDate(estateSaleDatesRaw, fallbackYear),
       type: estateSaleDatesRaw ? 'estate' : 'direct',
