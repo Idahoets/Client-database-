@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: vintage-queen-backend
+    runtime: node
+    rootDir: vintage-queen-backend
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: vintage-queen-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: DB_PATH
+        value: /data/vintage-queen.db
+      - key: CLOVER_API_BASE
+        value: https://api.clover.com
+      - key: SMTP_HOST
+        value: smtp.office365.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: ACCOUNTING_EMAIL
+        value: accounting@idahoets.com
+      - key: CLOVER_MERCHANT_ID
+        sync: false
+      - key: CLOVER_ACCESS_TOKEN
+        sync: false
+      - key: ESTATE_SALE_DEVICE_IDS
+        sync: false
+      - key: EXCLUDED_DEVICE_IDS
+        sync: false
+      - key: ASANA_PROJECT_ID
+        sync: false
+      - key: ASANA_TOKEN
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false

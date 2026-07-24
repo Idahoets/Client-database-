@@ -138,21 +138,42 @@ silently lost, but nothing real has gone out yet either.
   SMTP credentials and to make approve links clickable from anywhere but
   this machine.
 
-## Deployment - this app doesn't have a permanent home yet
+## Deployment (Render)
 
 Right now this only runs inside a Claude Code session - there's no server
 that stays up once the session ends, which is why none of the approve links
-or emails can actually work yet. It needs to run somewhere continuously with
-a real, stable address, e.g. a small always-on host (Render, Railway,
-Fly.io, a basic VPS - any of these work fine for something this size).
-Once it's deployed:
-- Set `PUBLIC_BASE_URL` to that address so approve links point somewhere
-  real (currently `http://localhost:3000`, only reachable from whatever
-  machine happens to be running the server at the moment).
-- The `SMTP_*` settings can actually be verified/used, since outbound SMTP
-  isn't blocked the way it is in this sandbox.
-- `npm start` needs to actually be running continuously (not just once) for
-  the scheduled report jobs and the approve-link endpoints to work day to day.
+or emails can actually work yet. Picked **Render** to host it: simplest
+deploy flow of the common options (connect the GitHub repo, it builds and
+runs automatically from `render.yaml` at the repo root).
+
+**Use the Starter plan, not Free** - this isn't optional for this app:
+- Render's free tier has no persistent disk at all, so the SQLite database
+  would be wiped on every deploy/restart.
+- Free web services sleep after 15 minutes idle. The scheduled jobs (daily
+  estate-payout check, monthly storefront statements) only fire if the
+  process is actually running at 8am - if it's asleep, that day's reports
+  just don't get generated, with nothing to signal it.
+
+Starter is ~$7/month and avoids both problems (always-on, persistent disk).
+
+**To deploy** (needs your Render account + billing - not something that can
+be done from here):
+1. Sign up / log in at render.com, connect your GitHub account, and give it
+   access to this repo (`Idahoets/Client-database-`).
+2. New -> Blueprint -> select this repo. Render reads `render.yaml`
+   automatically (it points at the `vintage-queen-backend` subfolder and
+   requests the Starter plan + a 1GB persistent disk mounted at `/data`).
+3. Render will prompt for the env vars marked `sync: false` in `render.yaml`
+   - fill these in from your local `.env`: `CLOVER_MERCHANT_ID`,
+   `CLOVER_ACCESS_TOKEN`, `ESTATE_SALE_DEVICE_IDS`, `EXCLUDED_DEVICE_IDS`,
+   `ASANA_PROJECT_ID`, `ASANA_TOKEN` (once you have one), `SMTP_USER`,
+   `SMTP_PASSWORD`.
+4. Deploy. `PUBLIC_BASE_URL` doesn't need to be set manually - `notify.js`
+   picks up Render's own `RENDER_EXTERNAL_URL` automatically, so approve
+   links work right away.
+5. Once it's live, run `npm run seed`, `npm run import-items`, and
+   `npm run sync` against it (via Render's shell, or point a local run at
+   the same database) to populate real data - a fresh deploy starts empty.
 
 ## Running it (once .env is filled in)
 

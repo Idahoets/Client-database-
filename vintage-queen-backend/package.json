@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Clover sync, consignor database, and payout reports for The Vintage Queen",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/seed.js",

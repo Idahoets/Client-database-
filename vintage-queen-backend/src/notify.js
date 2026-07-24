@@ -3,7 +3,9 @@ import crypto from 'crypto';
 import 'dotenv/config';
 
 const ACCOUNTING_EMAIL = process.env.ACCOUNTING_EMAIL || 'accounting@idahoets.com';
-const BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+// Render sets RENDER_EXTERNAL_URL automatically - prefer that so approve
+// links work out of the box after a deploy, no manual PUBLIC_BASE_URL step.
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 let transporter;
 function getTransporter() {
