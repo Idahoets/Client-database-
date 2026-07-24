@@ -2,7 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import db from './db.js';
 import { startScheduledJobs } from './reports.js';
-import { sendConsignorEmail, sendConsignorText } from './notify.js';
+import { sendConsignorEmail } from './notify.js';
 
 const app = express();
 app.use(express.json());
@@ -10,11 +10,7 @@ app.use(express.json());
 // Nothing reaches a consignor except through here - hit by the approve
 // link(s) in the review email accounting@idahoets.com gets for every report.
 async function sendReport(report, consignor) {
-  if (report.delivery_method === 'text') {
-    await sendConsignorText(report, consignor);
-  } else {
-    await sendConsignorEmail(report, consignor);
-  }
+  await sendConsignorEmail(report, consignor);
   db.prepare(`UPDATE reports SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = ?`).run(report.id);
 }
 

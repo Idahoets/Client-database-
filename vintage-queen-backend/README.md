@@ -15,7 +15,7 @@ to be and what's still open.
 - `src/items.js` - imports current Clover inventory (regular items only) into the `items` table
 - `src/sync.js` - matches Clover order line items back to consignors by SKU, updates statuses
 - `src/reports.js` - the two payout jobs: estate payout (7 days after each estate sale), storefront statement (monthly, payable at real contract end)
-- `src/notify.js` - builds and sends the review/digest/consignor emails (Outlook SMTP); SMS is stubbed until a provider is picked
+- `src/notify.js` - builds and sends the review/digest/consignor/manual-outreach emails (Outlook SMTP) - no text messages, per owner decision
 - `src/server.js` - small API the portal reads from, plus the approve-link endpoints
 - `src/seed.js` - pulls consignors from Asana, joins in the Clover code (see below), upserts into the `consignors` table
 
@@ -118,22 +118,41 @@ never sent directly:
    for the whole batch), which sends the real message and marks the report
    `sent`. A failed send (e.g. SMTP not configured) leaves it `pending_review`
    so it can be retried by clicking again.
-4. Delivery method is picked automatically: **email** if the consignor has one
-   on file, **text** otherwise (now pulled from Asana's Phone field too) - both
-   go through the same approval gate.
+4. **No text messages** (owner decision) - email is the only automated
+   channel. A consignor with no email on file gets flagged in its own section
+   of the review/digest email ("needs manual outreach") with their phone
+   number if there is one, instead of a broken send attempt. Currently 6 of
+   the 23 mapped consignors have no email and fall into this bucket.
 5. $0 / not-yet-payable reports are still recorded in the `reports` table for
    history, but skip the review email entirely - nothing to approve.
 
-**Needs your input to actually send anything:**
-- `SMTP_USER` / `SMTP_PASSWORD` in `.env` - an Outlook/Office365 app password
-  for whichever mailbox should send. Until this is set, sends are logged
-  ("would have emailed...") instead of going out, so nothing is silently lost.
-- `PUBLIC_BASE_URL` - wherever this app ends up deployed; approve links are
-  built from it and won't work for anyone but you until it points somewhere
-  actually reachable (currently `http://localhost:3000`, which only resolves
-  on the machine running the server).
-- No SMS provider chosen yet - texts log a warning instead of sending
-  (`sendConsignorText` in `notify.js`) until one's picked and wired in.
+`SMTP_USER`/`SMTP_PASSWORD` are set (Outlook, accounting@idahoets.com) but
+**unverified** - this sandbox only allows outbound HTTPS, so a raw SMTP
+connection on port 587 times out here regardless of whether the credentials
+are actually correct. Until this runs somewhere with normal network access,
+sends are logged ("would have emailed...") instead of going out - nothing is
+silently lost, but nothing real has gone out yet either.
+
+**Needs your input:**
+- Somewhere to actually deploy this app - required both to verify/use the
+  SMTP credentials and to make approve links clickable from anywhere but
+  this machine.
+
+## Deployment - this app doesn't have a permanent home yet
+
+Right now this only runs inside a Claude Code session - there's no server
+that stays up once the session ends, which is why none of the approve links
+or emails can actually work yet. It needs to run somewhere continuously with
+a real, stable address, e.g. a small always-on host (Render, Railway,
+Fly.io, a basic VPS - any of these work fine for something this size).
+Once it's deployed:
+- Set `PUBLIC_BASE_URL` to that address so approve links point somewhere
+  real (currently `http://localhost:3000`, only reachable from whatever
+  machine happens to be running the server at the moment).
+- The `SMTP_*` settings can actually be verified/used, since outbound SMTP
+  isn't blocked the way it is in this sandbox.
+- `npm start` needs to actually be running continuously (not just once) for
+  the scheduled report jobs and the approve-link endpoints to work day to day.
 
 ## Running it (once .env is filled in)
 

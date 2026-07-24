@@ -43,8 +43,7 @@ function batchApproveUrl(token) {
   return `${BASE_URL}/api/reports/batch/${token}/approve`;
 }
 
-// The actual message a consignor receives - same content whether it goes out
-// by email or gets read out for a text.
+// The actual message a consignor receives.
 export function consignorMessage(report, consignor) {
   const details = JSON.parse(report.details_json || '{}');
   const isEstate = report.report_type === 'estate_payout';
@@ -67,7 +66,7 @@ export async function sendReviewEmail(report, consignor) {
     to: ACCOUNTING_EMAIL,
     subject: `Review needed: ${subject}`,
     text: [
-      `${report.delivery_method === 'text' ? 'Text' : 'Email'} to ${consignor.name} (${report.recipient || 'no contact on file'}):`,
+      `Email to ${consignor.name} (${report.recipient}):`,
       '',
       `Subject: ${subject}`,
       text,
@@ -79,33 +78,50 @@ export async function sendReviewEmail(report, consignor) {
   });
 }
 
+// No email on file and no text messages (owner decision) - there's no
+// automated way to deliver this one, so just let accounting@ know it needs a
+// phone call, mailed check, or similar, with the numbers they'd need.
+export async function sendNeedsManualOutreachEmail(consignor, reportType, amount) {
+  const label = reportType === 'estate_payout' ? 'Estate Sale Payout' : 'Storefront Statement';
+  await sendEmail({
+    to: ACCOUNTING_EMAIL,
+    subject: `Needs manual outreach: ${consignor.name} - $${amount.toFixed(2)} ${label}`,
+    text: `${consignor.name} (${consignor.code}) has a ${label.toLowerCase()} of $${amount.toFixed(2)} ready, but no email on file and no text messages are sent - this one needs a phone call, mailed check, or other manual contact.${consignor.contact_phone ? ` Phone on file: ${consignor.contact_phone}.` : ' No phone on file either.'}`
+  });
+}
+
 // One digest email per monthly storefront-statement run instead of one email
-// per consignor - includes every consignor in the batch, an individual
-// approve link for each, and one link to approve the whole batch at once.
-export async function sendMonthlyDigestEmail(reports, consignorsByCode) {
-  if (!reports.length) return;
+// per consignor - includes every consignor with something owed, an
+// individual approve link for each, one link to approve the whole batch at
+// once, and a separate section for anyone with no email on file (no
+// automated way to reach them - no text messages, per owner decision).
+export async function sendMonthlyDigestEmail(reports, consignorsByCode, needsManual = []) {
+  if (!reports.length && !needsManual.length) return;
 
   const lines = reports.map(r => {
     const c = consignorsByCode[r.consignor_code];
     const details = JSON.parse(r.details_json || '{}');
     return `- ${c.name} (${r.consignor_code}): $${r.amount.toFixed(2)}, ${details.item_count} item(s), ` +
-      `${details.payable ? 'PAYABLE NOW' : 'accruing'}, ${r.delivery_method} to ${r.recipient || 'no contact on file'} ` +
-      `-> ${approveUrl(r.id, r.approval_token)}`;
+      `${details.payable ? 'PAYABLE NOW' : 'accruing'}, email to ${r.recipient} -> ${approveUrl(r.id, r.approval_token)}`;
   });
 
-  const batchToken = reports[0].approval_token;
+  const manualLines = needsManual.map(({ consignor, amount }) =>
+    `- ${consignor.name} (${consignor.code}): $${amount.toFixed(2)} - no email on file${consignor.contact_phone ? `, phone: ${consignor.contact_phone}` : ', no phone on file either'} - needs manual outreach, no approve link`
+  );
+
+  const parts = [`${reports.length} storefront statement(s) ready to approve, ${needsManual.length} need manual outreach. Nothing is sent to any consignor until you approve.`, ''];
+
+  if (reports.length) {
+    parts.push(`Approve ALL and send everything: ${batchApproveUrl(reports[0].approval_token)}`, '', 'Or approve individually:', ...lines);
+  }
+  if (manualLines.length) {
+    parts.push('', 'Needs manual outreach (no email on file, no text messages):', ...manualLines);
+  }
 
   await sendEmail({
     to: ACCOUNTING_EMAIL,
-    subject: `Monthly storefront statements ready for review (${reports.length} consignors)`,
-    text: [
-      `${reports.length} storefront statements generated. Nothing is sent to any consignor until you approve.`,
-      '',
-      `Approve ALL and send everything: ${batchApproveUrl(batchToken)}`,
-      '',
-      'Or approve individually:',
-      ...lines
-    ].join('\n')
+    subject: `Monthly storefront statements ready for review (${reports.length} to approve, ${needsManual.length} manual)`,
+    text: parts.join('\n')
   });
 }
 
@@ -113,12 +129,4 @@ export async function sendConsignorEmail(report, consignor) {
   const { subject, text } = consignorMessage(report, consignor);
   const sent = await sendEmail({ to: consignor.contact_email, subject, text });
   if (!sent) throw new Error('SMTP not configured - see .env');
-}
-
-// No SMS provider chosen yet (owner said "decide later") - this logs what
-// would have gone out so nothing is silently lost once one is wired up.
-export async function sendConsignorText(report, consignor) {
-  const { text } = consignorMessage(report, consignor);
-  console.warn(`SMS provider not configured yet - would have texted ${consignor.contact_phone}: "${text}"`);
-  throw new Error('SMS provider not configured yet - see README');
 }

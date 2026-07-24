@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import db from './db.js';
-import { newApprovalToken, sendReviewEmail, sendMonthlyDigestEmail } from './notify.js';
+import { newApprovalToken, sendReviewEmail, sendMonthlyDigestEmail, sendNeedsManualOutreachEmail } from './notify.js';
 
 const COMMISSION = { estate_sale: 0.40, storefront: 0.50 };
 const ESTATE_PAYOUT_DAYS = 7;
@@ -9,10 +9,12 @@ const ESTATE_PAYOUT_DAYS = 7;
 // review (email to accounting@idahoets.com with an approve link) rather than
 // sent directly. Only reports with something actually owed are worth a
 // review email; $0/not-yet-payable reports still get recorded for history.
+// No text messages (owner decision) - a consignor with no email on file has
+// no automated delivery method, and is flagged for manual outreach instead.
 function deliveryFor(consignor) {
   return consignor.contact_email
     ? { delivery_method: 'email', recipient: consignor.contact_email }
-    : { delivery_method: 'text', recipient: consignor.contact_phone };
+    : { delivery_method: null, recipient: null };
 }
 
 function addDays(dateStr, days) {
@@ -61,8 +63,16 @@ export async function generateEstatePayoutReports() {
     }
 
     const { delivery_method, recipient } = deliveryFor(c);
-    const token = newApprovalToken();
 
+    if (!delivery_method) {
+      db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'estate_payout', ?, ?)`)
+        .run(c.code, total, details);
+      await sendNeedsManualOutreachEmail(c, 'estate_payout', total);
+      console.log(`Estate payout ready for ${c.name} (${c.code}): $${total.toFixed(2)} - no email on file, flagged for manual outreach.`);
+      continue;
+    }
+
+    const token = newApprovalToken();
     const { lastInsertRowid: id } = db.prepare(`
       INSERT INTO reports (consignor_code, report_type, amount, details_json, delivery_method, recipient, approval_token)
       VALUES (?, 'estate_payout', ?, ?, ?, ?, ?)
@@ -84,6 +94,7 @@ export async function generateStorefrontStatements() {
   const consignors = db.prepare(`SELECT * FROM consignors`).all();
   const batchToken = newApprovalToken();
   const forDigest = [];
+  const needsManual = [];
   const consignorsByCode = {};
 
   for (const c of consignors) {
@@ -102,6 +113,15 @@ export async function generateStorefrontStatements() {
     }
 
     const { delivery_method, recipient } = deliveryFor(c);
+
+    if (!delivery_method) {
+      db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'storefront_statement', ?, ?)`)
+        .run(c.code, total, details);
+      needsManual.push({ consignor: c, amount: total });
+      console.log(`Storefront statement for ${c.name} (${c.code}): $${total.toFixed(2)} - no email on file, flagged for manual outreach.`);
+      continue;
+    }
+
     const { lastInsertRowid: id } = db.prepare(`
       INSERT INTO reports (consignor_code, report_type, amount, details_json, delivery_method, recipient, approval_token)
       VALUES (?, 'storefront_statement', ?, ?, ?, ?, ?)
@@ -113,9 +133,9 @@ export async function generateStorefrontStatements() {
     console.log(`Storefront statement for ${c.name} (${c.code}): $${total.toFixed(2)} - ${ready ? 'payable now' : 'accruing'}`);
   }
 
-  if (forDigest.length) {
-    await sendMonthlyDigestEmail(forDigest, consignorsByCode);
-    console.log(`Monthly digest sent to accounting@idahoets.com for ${forDigest.length} consignors.`);
+  if (forDigest.length || needsManual.length) {
+    await sendMonthlyDigestEmail(forDigest, consignorsByCode, needsManual);
+    console.log(`Monthly digest sent to accounting@idahoets.com: ${forDigest.length} ready to approve, ${needsManual.length} need manual outreach.`);
   }
 }
 

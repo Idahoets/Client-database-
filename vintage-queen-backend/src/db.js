@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS reports (
   amount REAL NOT NULL,
   generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   details_json TEXT,
-  delivery_method TEXT,           -- 'email' or 'text' - email if the consignor has one on file, text otherwise
-  recipient TEXT,                 -- the email address or phone number the statement will go to
+  delivery_method TEXT,           -- 'email', or NULL if the consignor has no email on file (no text messages - flagged for manual outreach instead)
+  recipient TEXT,                 -- the email address the statement will go to
   approval_token TEXT,            -- one storefront-statement run shares a token across all its reports (batch approve); estate payouts each get their own
   status TEXT NOT NULL DEFAULT 'pending_review', -- 'pending_review' | 'sent'
   sent_at TEXT
