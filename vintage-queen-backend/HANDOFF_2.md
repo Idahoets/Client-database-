@@ -26,38 +26,72 @@ live service before, **4 of 5 estate consignors had payout dates that had
 already passed with zero report ever generated.** Fixed to catch up on any
 overdue date, not just an exact match (see reports.js commit).
 
-### Real current-owed totals (full history, as of this backfill)
+### Real current-owed totals (first full-history backfill)
 
 **Estate payouts - $36,000.70 total, all overdue, none previously reported:**
-- Chris Brule: $11,028.25 (no email - manual outreach)
-- +Anothony/Cindy Maher: $10,827.31 (no email - manual outreach)
-- Smith Estate/Roxanne: $9,988.20 (has email)
-- Sue Daniel: $4,156.95 (no email - manual outreach)
-- Shirley Mcdermott: $0 (her estate sale hasn't produced any sold-estate
-  items yet)
+Chris Brule $11,028.25, +Anothony/Cindy Maher $10,827.31, Smith Estate/
+Roxanne $9,988.20, Sue Daniel $4,156.95, Shirley Mcdermott $0.
 
-**Storefront statements - $24,214.49 total across 23 consignors** (mostly
-still accruing - only Ben Hendry's contract has actually ended so far, i.e.
-"payable now"; everyone else's total is real but not yet due). Top few:
-Smith Estate/Roxanne $5,247.50, Chris Brule $2,811.50, Curtis Olson
-$2,319.00, Cindy Mckellip $2,060.00, Donna Crow $1,798.50 - full list of all
-23 is in reports.js output / the `reports` table.
+**Owner said: don't chase these past estate payouts** - leave them alone,
+don't send anything for them. Presumably already handled outside this
+system before it existed, consistent with the standing "already paid if
+contract ended" rule. Nobody's been contacted about them either way - they
+were only ever computed in local test runs, never a deployed/live system.
 
-**Grand total across both: $60,215.20** - compare to the ~$6,376
-storefront-only estimate from the 27-day-window data yesterday. This is why
-the pagination bug mattered as much as it did.
+**Storefront statements - $24,214.49 total across 23 consignors** at that
+point (mostly still accruing - only Ben Hendry's contract had ended so far).
 
-None of these have been approved/sent yet - they're all sitting as
-`pending_review` in the `reports` table, same approval-gated flow as before
-(review email to accounting@idahoets.com, nothing goes to a consignor
-without a click). SMTP still isn't reachable from this sandbox, so the
-review emails logged instead of sending, same limitation as before.
+**Grand total at that point: $60,215.20** - compare to the ~$6,376
+storefront-only estimate from the 27-day-window data the day before. This
+is why the pagination bug mattered as much as it did.
 
-This was all computed in a **local test database**, not a deployed/live one
-- still needs Render deployment (see below, unchanged/paused) before this
-becomes the actual system of record. Re-running the full pipeline once
-deployed will reproduce these same numbers (modulo whatever's sold between
-now and then).
+### Update: 8 more consignors mapped, totals now even higher
+
+Asked the owner for contract dates on the 10 people who were active in
+Clover but missing `contract_start`/`due_on` entirely. They went into Asana
+and filled in what they could. Re-pulled fresh data and found:
+
+- **8 of 10 now complete**, mapped: Barbara Allari (`ABAR`), Brian Price
+  (`PRICE`), Pippa Fesjian (`PIP`), Herb Wescott (`WEST`), Brian Britton
+  (`BB`), Jim Moore (`JIMM`), Greg Woods (`WOOD`), Dana Larrondo (`LARR`).
+- **2 still incomplete**: Dana Smith (both `contract_start` and `due_on`
+  still null) and Hal Weber (`due_on` present, `contract_start` still null).
+- Also found **2 brand-new Asana tasks** that appeared since the last pull,
+  both complete from the start (real contract dates, email, phone): **Greg
+  Fairbourn** (matches Clover category "Fairbourn, Greg (Gfa)", $98 seen in
+  the original July audit - mapped as `GFA`) and **Tania Hansen** (entirely
+  new name, contract just started 8/4, no Clover sales yet - nothing to map
+  until she has activity).
+
+Re-ran the full pipeline with all of this in place:
+
+- **Storefront total jumped from $24,214.49 to $45,209.36** - the 8 newly
+  mapped consignors added real money, notably Barbara Allari $4,612.00,
+  Brian Price $4,147.50, Pippa Fesjian $4,005.38, Brian Britton $3,638.99.
+- Estate total basically unchanged ($35,961.70 - small drift from new
+  orders landing in the live sandbox between runs).
+- **New grand total: $81,171.06.**
+- Note: Herb Wescott's storefront statement came back **"payable now"**
+  (his `due_on` of 6/10 has already passed) - unlike the old estate
+  payouts, this is a *freshly provided* date, not backlog from before the
+  system existed, so it's not obviously covered by the "don't worry about
+  past payouts" instruction. Worth confirming with the owner rather than
+  assuming either way.
+
+Still 33 consignors seeded total (25 + 8 newly-dated), 2 skipped (Greg
+Fairbourn now mapped, Tania Hansen has no Clover code yet), 49 skipped for
+missing contract dates (down from 57 at the start of this session - mostly
+historical/completed tasks that predate contract tracking, not urgent).
+
+None of these numbers have been approved/sent to anyone - still sitting as
+`pending_review`, same approval-gated flow as always (review email to
+accounting@idahoets.com, nothing goes to a consignor without a click). SMTP
+still isn't reachable from this sandbox, so review emails log instead of
+sending. This was all computed in **local test databases** that get deleted
+after each run - still needs Render deployment before any of this becomes
+the actual system of record. Re-running the full pipeline once deployed
+will reproduce these same numbers (modulo whatever's sold between now and
+then).
 
 Also this session: mapped Patrick Connor (`PAT`) - he now has real July
 sales and a confirmed active contract in Asana, wasn't seedable yesterday.

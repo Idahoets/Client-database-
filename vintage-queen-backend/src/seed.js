@@ -40,7 +40,8 @@ const CODE_BY_TASK_GID = {
   '1212596660527294': 'BB',    // Britton, Brian (Clover: "Britton, Brian (BB)")
   '1213890005155385': 'JIMM',  // Jim Moore (Clover: "MOORE, JIM (JIMM)")
   '1212903565511041': 'WOOD',  // Greg Woods (Clover: "Woods, Greg (Wood)")
-  '1213204890649682': 'LARR'   // Larrondo, Dana (Clover: "Dana Larrondo (Larr)")
+  '1213204890649682': 'LARR',  // Larrondo, Dana (Clover: "Dana Larrondo (Larr)")
+  '1217197908391185': 'GFA'    // Greg Fairbourn - brand new Asana task, complete from the start (Clover: "Fairbourn, Greg (Gfa)")
 };
 
 const insert = db.prepare(`
