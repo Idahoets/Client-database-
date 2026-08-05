@@ -1,12 +1,33 @@
 # Handoff notes - continue backend work in Claude Code
 
-Session date: 2026-07-24. Picks up after HANDOFF_1.md was fully implemented
-(Clover/Asana integration, item import, channel classification, approval-gated
-statement delivery, Render deployment prep - all merged). This session found
-a significant new problem while validating the numbers: **the current data
-only reflects ~27 days of sales, not full history, and there are far more
-than 25 consignors actually selling.** Nothing has been resolved yet - this
-is where to pick back up.
+Session date: 2026-07-24, continued 2026-07-25. Picks up after HANDOFF_1.md
+was fully implemented (Clover/Asana integration, item import, channel
+classification, approval-gated statement delivery, Render deployment prep -
+all merged). Found a significant new problem while validating the numbers:
+**the app only ever saw ~27 days of sales, not full history, and there are
+far more than 25 consignors actually selling.**
+
+**Update (2026-07-25): pagination is now fixed and confirmed at scale.**
+`clover.js` was capped at 1000 results per call with no pagination -
+`getOrdersSince()` and `getItems()` now page through with `offset` until a
+short page comes back. Confirmed this was live, active data loss (not just
+theoretical): re-ran a sync in a clean test db and three of Rod Ruter's real
+July sales silently vanished because they fell outside the unpaginated
+window. Full paginated pull: **36,279 total orders, 26,895 total items** -
+both numbers were previously invisible past the first 1000. A full
+historical sync (seed -> import-items -> sync) is running now (started
+2026-07-25) to get real current-owed totals - see bottom of this file for
+the result once it's in.
+
+Also this session: mapped Patrick Connor (`PAT`) - he now has real July
+sales and a confirmed active contract in Asana, wasn't seedable yesterday.
+Investigated the "Rod Ruter dual-code" question from yesterday's audit and
+it turned out to be a false alarm: his items are all tagged `RUTER...` in
+the text itself - the `(RR)` was just an inconsistent Clover *category*
+label on some of his items, which parsing never reads. Added a
+`CODE_ALIASES` mechanism to `skuParser.js` anyway (not needed for this
+specific case, but this kind of inconsistent staff tagging seems likely to
+recur, so the mechanism's there when it does).
 
 ## The core problem: order sync only covers the last ~1000 orders
 
@@ -99,11 +120,13 @@ and contract status not yet pulled) - real money involved:
 | VENABLE, CAROL (VEN) | $8.00 | Venable, Carol |
 | BRENNAN, MIA (MIA) | $5.00 | Brennan, Mia |
 
-**Rod Ruter data issue:** two different Clover categories exist for what's
-probably the same person - `RUTER (Ruter)` ($28, already mapped to code
-`RUTER`) and `RUTER, ROD (RR)` ($18, not mapped). If they're the same
-person, his `RR`-tagged sales are currently invisible to sync. Needs
-confirming, then either map `RR` as an alias or fix the Clover tagging.
+**Rod Ruter data issue - resolved, was a false alarm.** Two different Clover
+*categories* exist for the same person (`RUTER (Ruter)` and `RUTER, ROD
+(RR)`), but his actual item names all start with `RUTER...` regardless of
+which category they're filed under - sync.js parses the item name, never
+the category, so his sales were never actually missing. What *was* missing
+turned out to be the unpaginated-API bug (see top of file) - three of his
+July misc sales fell outside the old unpaginated window.
 
 **22 categories not confidently matched to any Asana task** (strict
 name-matching only - no loose guessing, to avoid wrongly attributing money):
@@ -155,25 +178,60 @@ name-matching only - no loose guessing, to avoid wrongly attributing money):
   that depend on Asana data specifically (contract dates, email, etc.),
   since a day may have passed.
 
+## Update (2026-07-25): contract-status audit results, re-run with fresh data
+
+Re-ran the category audit against a fresh Asana pull (not yesterday's cache)
+and fixed a bug in the matcher itself (was matching against the raw category
+string including the `(CODE)` suffix, which broke subset matching - fixed to
+match against the parsed name only). Results, excluding the 23+1 already
+mapped (Patrick Connor now included):
+
+- **Nobody has a contract that's confirmed already-ended-but-unpaid** - zero
+  matches in that bucket.
+- **23 people matched an Asana task but have no `contract_start`/`due_on`
+  filled in at all**, so contract status can't be determined from data alone:
+  - **10 with `completed: false`** (likely still active, just missing
+    contract dates - real money at stake): Barbara Allari ($4,197.54 in
+    July alone), Brian Price ($3,435), Pippa Fesjian ($1,055), Herb Wescott
+    ($923), Dana Smith ($789), Brian Britton ($399), Hal Weber ($255), Jim
+    Moore ($233), Greg Woods ($125), Dana Larrondo ($14). **These need
+    `contract_start`/`due_on` filled in in Asana before they can be mapped
+    and paid correctly** - ask the owner.
+  - **13 with `completed: true`** (per the owner's rule, likely already
+    settled through whatever process predated this system - probably
+    nothing to do, but flagging the total in case any should be
+    double-checked): Molly Worek ($1,186), Terry Bruss ($832), Dave Thompson
+    ($588), Lorraine Land ($511), Julie Turner ($449), Chazie Meyer ($304),
+    Nancy Heath ($303), Kati Hubble ($290), Filler Estate ($169), Brett
+    Sebring ($19), Carol Venable ($13), Athena Crowley ($8), Mia Brennan ($5).
+- **26 categories still don't match any Asana task** - same list as
+  yesterday, plus one new one that turned out to be mappable: **"Jensen,
+  Mitzi (Mjen)", $22 in July** - Mitzi Jenson was confirmed yesterday as
+  "not yet in Clover." Checked her Asana task directly: she now has both a
+  Clover category (spelled "Jensen" there vs "Jenson" in Asana) *and* real
+  contract dates (`contract_start` 2026-07-18, `due_on` 2026-10-25) -
+  **mapped as `MJEN`**, same situation as Patrick Connor.
+
+Only Mitzi Jenson remains from the original two "not in Clover yet"
+consignors - nothing more to do there until she does.
+
 ## Suggested next steps, in order
 
-1. Pull full contract status (Asana) for all ~39 newly-found categories
-   above - sort into "active contract, still owed" vs "contract already
-   ended, already paid, nothing to do" vs "genuinely not in Asana, needs the
-   owner to say who this is."
-2. Resolve the Rod Ruter dual-category question.
-3. For anyone confirmed "still owed," add them to `CODE_BY_TASK_GID` in
-   `seed.js` (need their contract dates from Asana either way, same as the
-   original 23).
-4. Add pagination to `getOrdersSince()`/`getItems()` in `clover.js` (proven
-   to work via manual testing this session - `offset`/`limit` params, loop
-   until a page comes back short). Needed regardless of the answer to #1,
-   since the app currently can't see anything before 6/27 no matter what.
-5. Decide and implement how far back to actually sync once #1 narrows down
-   who's really owed money - probably back to the earliest still-open
-   consignor's `contract_start`, not a blind full-history backfill.
-6. Add a "paid" marker so `generateStorefrontStatements()` stops re-summing
-   already-reported sales every time it runs.
-7. Everything else from HANDOFF_1 that's still open: deployment billing,
-   SMTP verification, ASANA_TOKEN, Mitzi Jenson/Patrick Connor (still
-   nothing to map - confirmed not in Clover yet).
+1. Ask the owner to fill in `contract_start`/`due_on` in Asana for the 10
+   `completed: false` people above - can't map/pay them correctly without
+   real contract dates, and there's real money involved (Barbara Allari
+   alone is $4,197.54 just in July).
+2. Check whether Mitzi Jenson now has both Clover activity *and* Asana
+   contract dates (like Patrick Connor did today) - if so, map her too.
+3. Show the owner the 26 still-unmatched categories and the 13
+   `completed: true` ones, and ask for identification / confirmation that
+   the completed ones really don't need action.
+4. Once the full historical sync (running now, see top of file) finishes,
+   pull real current-owed totals per consignor and compare against what the
+   ~27-day-window numbers showed yesterday - the real amounts are probably
+   meaningfully higher for anyone whose contract started before 6/27.
+5. Add a "paid" marker so `generateStorefrontStatements()` stops re-summing
+   already-reported sales every time it runs - matters more now that full
+   history is in play.
+6. Everything else from HANDOFF_1 that's still open: deployment billing,
+   SMTP verification, `ASANA_TOKEN` for standalone runs.
