@@ -30,7 +30,17 @@ const CODE_BY_TASK_GID = {
   '1216838570025489': 'MCK',   // Cindy Mckellip
   '1216838570025494': 'ANTT',  // Antonia Tamayo
   '1216838570025470': 'PAT',   // Patrick Connor (Clover: "Patrick Connor (Pat)") - now has real July sales, confirmed active contract
-  '1216838570025465': 'MJEN'   // Mitzi Jenson (Clover: "Jensen, Mitzi (Mjen)") - now has real July sales and contract dates, confirmed active
+  '1216838570025465': 'MJEN',  // Mitzi Jenson (Clover: "Jensen, Mitzi (Mjen)") - now has real July sales and contract dates, confirmed active
+  // Owner filled in contract dates in Asana for these 8 - previously blocked
+  // on missing contract_start/due_on entirely:
+  '1213204665803835': 'ABAR',  // Allari, Barbara - Jenny Horning contact (Clover: "Allari Barbara (Abar)")
+  '1213890005166781': 'PRICE', // Brian Price (Clover: "PRICE, BRIAN (PRICE)")
+  '1213160677847044': 'PIP',   // Fesjian, Pippa (Clover: "Pippa Fesjian (Pip)")
+  '1213890005155409': 'WEST',  // Herb Wescott (Clover: "WESCOTT, HERB (WEST)")
+  '1212596660527294': 'BB',    // Britton, Brian (Clover: "Britton, Brian (BB)")
+  '1213890005155385': 'JIMM',  // Jim Moore (Clover: "MOORE, JIM (JIMM)")
+  '1212903565511041': 'WOOD',  // Greg Woods (Clover: "Woods, Greg (Wood)")
+  '1213204890649682': 'LARR'   // Larrondo, Dana (Clover: "Dana Larrondo (Larr)")
 };
 
 const insert = db.prepare(`
