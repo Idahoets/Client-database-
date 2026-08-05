@@ -28,7 +28,8 @@ const CODE_BY_TASK_GID = {
   '1216838570025475': 'JJ',    // Julie Jones
   '1216838570025482': 'SDAN',  // Sue Daniel
   '1216838570025489': 'MCK',   // Cindy Mckellip
-  '1216838570025494': 'ANTT'   // Antonia Tamayo
+  '1216838570025494': 'ANTT',  // Antonia Tamayo
+  '1216838570025470': 'PAT'    // Patrick Connor (Clover: "Patrick Connor (Pat)") - now has real July sales, confirmed active contract
 };
 
 const insert = db.prepare(`
