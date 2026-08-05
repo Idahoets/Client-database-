@@ -30,7 +30,11 @@ function payoutFor(item) {
 }
 
 // Estate sale payout: only items sold at the estate sale, due 7 days after that sale.
-// Run daily - fires once per consignor per estate sale, right on the due date.
+// Run daily - catches each estate sale on or after its due date (not just
+// exactly on it), so a payout doesn't get silently skipped forever if the
+// job doesn't happen to run on the exact due date (e.g. the app wasn't
+// running yet, or a run failed) - the alreadySent check below still keeps
+// each one from generating more than once.
 export async function generateEstatePayoutReports() {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -40,7 +44,7 @@ export async function generateEstatePayoutReports() {
 
   for (const c of estateClients) {
     const dueDate = addDays(c.estate_sale_date, ESTATE_PAYOUT_DAYS).toISOString().slice(0, 10);
-    if (dueDate !== today) continue;
+    if (dueDate > today) continue;
 
     const alreadySent = db.prepare(`
       SELECT 1 FROM reports WHERE consignor_code = ? AND report_type = 'estate_payout'
