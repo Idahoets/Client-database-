@@ -7,17 +7,57 @@ all merged). Found a significant new problem while validating the numbers:
 **the app only ever saw ~27 days of sales, not full history, and there are
 far more than 25 consignors actually selling.**
 
-**Update (2026-07-25): pagination is now fixed and confirmed at scale.**
+**Update (2026-07-25): pagination fixed, full historical sync run, real
+totals now known - and they're much bigger than yesterday's numbers.**
+
 `clover.js` was capped at 1000 results per call with no pagination -
 `getOrdersSince()` and `getItems()` now page through with `offset` until a
 short page comes back. Confirmed this was live, active data loss (not just
 theoretical): re-ran a sync in a clean test db and three of Rod Ruter's real
 July sales silently vanished because they fell outside the unpaginated
 window. Full paginated pull: **36,279 total orders, 26,895 total items** -
-both numbers were previously invisible past the first 1000. A full
-historical sync (seed -> import-items -> sync) is running now (started
-2026-07-25) to get real current-owed totals - see bottom of this file for
-the result once it's in.
+both numbers were previously invisible past the first 1000.
+
+Ran the full pipeline (seed -> import-items -> sync -> reports) against
+complete history. Also found and fixed a second real bug while doing this:
+`generateEstatePayoutReports()` only ever fired when a consignor's payout
+due date exactly equaled today - since this app never ran as a continuous
+live service before, **4 of 5 estate consignors had payout dates that had
+already passed with zero report ever generated.** Fixed to catch up on any
+overdue date, not just an exact match (see reports.js commit).
+
+### Real current-owed totals (full history, as of this backfill)
+
+**Estate payouts - $36,000.70 total, all overdue, none previously reported:**
+- Chris Brule: $11,028.25 (no email - manual outreach)
+- +Anothony/Cindy Maher: $10,827.31 (no email - manual outreach)
+- Smith Estate/Roxanne: $9,988.20 (has email)
+- Sue Daniel: $4,156.95 (no email - manual outreach)
+- Shirley Mcdermott: $0 (her estate sale hasn't produced any sold-estate
+  items yet)
+
+**Storefront statements - $24,214.49 total across 23 consignors** (mostly
+still accruing - only Ben Hendry's contract has actually ended so far, i.e.
+"payable now"; everyone else's total is real but not yet due). Top few:
+Smith Estate/Roxanne $5,247.50, Chris Brule $2,811.50, Curtis Olson
+$2,319.00, Cindy Mckellip $2,060.00, Donna Crow $1,798.50 - full list of all
+23 is in reports.js output / the `reports` table.
+
+**Grand total across both: $60,215.20** - compare to the ~$6,376
+storefront-only estimate from the 27-day-window data yesterday. This is why
+the pagination bug mattered as much as it did.
+
+None of these have been approved/sent yet - they're all sitting as
+`pending_review` in the `reports` table, same approval-gated flow as before
+(review email to accounting@idahoets.com, nothing goes to a consignor
+without a click). SMTP still isn't reachable from this sandbox, so the
+review emails logged instead of sending, same limitation as before.
+
+This was all computed in a **local test database**, not a deployed/live one
+- still needs Render deployment (see below, unchanged/paused) before this
+becomes the actual system of record. Re-running the full pipeline once
+deployed will reproduce these same numbers (modulo whatever's sold between
+now and then).
 
 Also this session: mapped Patrick Connor (`PAT`) - he now has real July
 sales and a confirmed active contract in Asana, wasn't seedable yesterday.
