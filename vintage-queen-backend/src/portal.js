@@ -130,7 +130,7 @@ body{margin:0;background:var(--white);color:var(--maroon);font-family:'Poppins',
 .tab.active{background:var(--rosewood);color:var(--white);font-weight:500;}
 
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:26px 20px;}
-.tag{position:relative;background:var(--white);border:1px solid var(--blush-line);border-radius:3px;padding:20px 16px 16px;box-shadow:0 6px 14px rgba(51,0,0,0.08);font-family:'Poppins',sans-serif;font-weight:300;}
+.tag{position:relative;background:var(--blush);border:1px solid var(--blush-line);border-radius:3px;padding:20px 16px 16px;box-shadow:0 6px 14px rgba(51,0,0,0.08);font-family:'Poppins',sans-serif;font-weight:300;}
 .tag:nth-child(4n+1){transform:rotate(-1.6deg);}
 .tag:nth-child(4n+2){transform:rotate(1.2deg);}
 .tag:nth-child(4n+3){transform:rotate(-0.6deg);}
