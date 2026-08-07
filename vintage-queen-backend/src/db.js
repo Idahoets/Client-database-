@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS consignors (
   contract_end TEXT NOT NULL,     -- ISO date, real contract end (not always exactly +90 days - store the real date, don't compute it)
   estate_sale_date TEXT,          -- ISO date, only set for type='estate'
   contact_email TEXT,
-  contact_phone TEXT
+  contact_phone TEXT,
+  portal_pin TEXT                 -- 6-digit code paired with the consignor code to log into the portal - generated once, never overwritten by re-seeding
 );
 
 CREATE TABLE IF NOT EXISTS items (
@@ -39,6 +40,13 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE TABLE IF NOT EXISTS sync_state (
   key TEXT PRIMARY KEY,
   value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS portal_sessions (
+  token TEXT PRIMARY KEY,
+  consignor_code TEXT NOT NULL REFERENCES consignors(code),
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  expires_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS reports (

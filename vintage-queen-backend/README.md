@@ -15,9 +15,11 @@ to be and what's still open.
 - `src/items.js` - imports current Clover inventory (regular items only) into the `items` table
 - `src/sync.js` - matches Clover order line items back to consignors by SKU, updates statuses
 - `src/reports.js` - the two payout jobs: estate payout (7 days after each estate sale), storefront statement (monthly, payable at real contract end)
-- `src/notify.js` - builds and sends the review/digest/consignor/manual-outreach emails (Outlook SMTP) - no text messages, per owner decision
-- `src/server.js` - small API the portal reads from, plus the approve-link endpoints
-- `src/seed.js` - pulls consignors from Asana, joins in the Clover code (see below), upserts into the `consignors` table
+- `src/notify.js` - builds and sends the review/digest/consignor/manual-outreach/portal-access emails (Outlook SMTP) - no text messages, per owner decision
+- `src/payout.js` - shared commission math and dashboard-data aggregation (used by both the JSON API and the portal pages)
+- `src/portal.js` - the consignor-facing login + dashboard pages and PIN management
+- `src/server.js` - the JSON API, approve-link endpoints, and mounts the portal
+- `src/seed.js` - pulls consignors from Asana, joins in the Clover code (see below), upserts into the `consignors` table, issues portal PINs
 
 ## What real Clover data looks like here
 
@@ -99,6 +101,54 @@ issues verified against live data:
 - Regular items are now matched primarily by Clover's own item id (stable
   even if the tag text is edited later), falling back to `consignor_code +
   sku` text only for anything sold before it was ever imported.
+
+## Consignor portal (`portal.js`)
+
+Each consignor can log in at `/portal/login` any time to see what's sold and
+what's still available - no waiting for a statement. Backed by the same
+`items` table the rest of the app already maintains, so it's current as of
+the last `npm run sync`.
+
+**Login**: consignor code + a 6-digit PIN, not email/password. Chosen
+because some consignors don't have an email on file, and because the code
+alone is guessable (e.g. `MCK` for Mckellip) - real financial data shouldn't
+be reachable by just knowing someone's name. `ensurePortalPins()` generates
+a PIN the first time a consignor is seeded and never touches it again on
+later re-seeds, so a consignor's login stays stable. `seed.js` emails new
+PINs out automatically (`sendPortalAccessEmail` in `notify.js`) - straight
+to the consignor if they have an email, otherwise flagged to accounting@ for
+manual outreach, same pattern as everywhere else in this app. Portal access
+isn't a financial send, so unlike statements it doesn't go through the
+accounting@ approval gate - it's just account credentials.
+
+**Session**: a random token in an httpOnly cookie, checked against a
+`portal_sessions` table (30-day expiry, swept lazily on each request - fine
+at this scale). `requirePortalSession` (exported from `portal.js`) also
+guards the existing `/api/consignors/:code/dashboard` JSON endpoint, which
+was previously wide open to anyone who knew a code - now it 403s unless
+you're logged in as that exact consignor. `portal_pin` is stripped from
+every response before it goes out.
+
+**Pages** are plain server-rendered HTML (no template engine or frontend
+framework added - didn't seem worth it for two pages). `getDashboardData()`
+in `payout.js` is the single source of truth for the sold/available counts
+and owed total, shared between the JSON API and the HTML page so they can't
+drift apart.
+
+Verified end-to-end: logged in with a real generated PIN, confirmed a wrong
+PIN is rejected, confirmed a logged-in consignor gets a 403 trying another
+consignor's data via the API, confirmed logout actually invalidates the
+session, confirmed `portal_pin` never appears in a response.
+
+**Your existing website**: since that's on Wordpress/Squarespace/Wix, the
+portal isn't embedded in it - it's a separate page that site should link to
+(a "Consignor Login" button/nav item pointing at `<your-deployed-url>/portal/login`
+once this is deployed). True embedding isn't practical on those platforms
+for a login-gated dynamic page like this.
+
+**Still needs**: this is only genuinely "check any time, always current"
+once deployed and syncing on a schedule (see Deployment below) - right now
+inventory only updates when someone manually runs `npm run sync`.
 
 ## Statement delivery - nothing goes to a consignor without approval
 

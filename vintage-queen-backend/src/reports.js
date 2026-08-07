@@ -1,8 +1,8 @@
 import cron from 'node-cron';
 import db from './db.js';
 import { newApprovalToken, sendReviewEmail, sendMonthlyDigestEmail, sendNeedsManualOutreachEmail } from './notify.js';
+import { payoutFor } from './payout.js';
 
-const COMMISSION = { estate_sale: 0.40, storefront: 0.50 };
 const ESTATE_PAYOUT_DAYS = 7;
 
 // Nothing goes to a consignor automatically - every report gets queued for
@@ -21,12 +21,6 @@ function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
   return d;
-}
-
-function payoutFor(item) {
-  const commission = COMMISSION[item.channel];
-  const gross = item.is_misc ? item.tag_price * item.qty : item.sold_price;
-  return gross * (1 - commission);
 }
 
 // Claims a set of sold items for a report so they're never summed into a

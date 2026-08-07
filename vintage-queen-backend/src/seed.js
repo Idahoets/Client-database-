@@ -1,5 +1,7 @@
 import db from './db.js';
 import { getConsignorTasks } from './asana.js';
+import { ensurePortalPins } from './portal.js';
+import { sendPortalAccessEmail } from './notify.js';
 
 // Asana has no concept of the short code used in Clover SKUs/tags, so it has
 // to be maintained here, keyed by Asana task gid (not name - names get
@@ -92,7 +94,12 @@ async function seedFromAsana() {
     console.warn(`Possible duplicate: "${f.task}" (gid ${f.gid}) looks like the same person as "${f.duplicateOf.task}" (gid ${f.duplicateOf.gid}) - not auto-merged, resolve in Asana.`);
   }
 
-  console.log(`Seeded ${seeded} consignors from Asana. ${noCode} skipped (no Clover code mapped), ${incomplete} skipped (missing contract dates), ${flagged.length} possible duplicates flagged above.`);
+  const newPins = ensurePortalPins();
+  for (const c of newPins) {
+    await sendPortalAccessEmail(c);
+  }
+
+  console.log(`Seeded ${seeded} consignors from Asana. ${noCode} skipped (no Clover code mapped), ${incomplete} skipped (missing contract dates), ${flagged.length} possible duplicates flagged above. ${newPins.length} portal PIN(s) generated and emailed.`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

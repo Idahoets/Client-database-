@@ -3,9 +3,12 @@ import 'dotenv/config';
 import db from './db.js';
 import { startScheduledJobs } from './reports.js';
 import { sendConsignorEmail } from './notify.js';
+import { getDashboardData } from './payout.js';
+import portalRouter, { requirePortalSession } from './portal.js';
 
 const app = express();
 app.use(express.json());
+app.use('/portal', portalRouter);
 
 // Nothing reaches a consignor except through here - hit by the approve
 // link(s) in the review email accounting@idahoets.com gets for every report.
@@ -53,45 +56,17 @@ app.get('/api/reports/batch/:token/approve', async (req, res) => {
   res.type('text/plain').send(results.join('\n'));
 });
 
-const COMMISSION = { estate_sale: 0.40, storefront: 0.50 };
-
-function payoutFor(item) {
-  const commission = COMMISSION[item.channel];
-  const gross = item.is_misc ? item.tag_price * item.qty : item.sold_price;
-  return gross * (1 - commission);
-}
-
-// Everything a consignor sees in their portal, in one call.
-app.get('/api/consignors/:code/dashboard', (req, res) => {
-  const consignor = db.prepare(`SELECT * FROM consignors WHERE code = ?`).get(req.params.code);
-  if (!consignor) return res.status(404).json({ error: 'Consignor not found' });
-
-  const items = db.prepare(`SELECT * FROM items WHERE consignor_code = ? ORDER BY updated_at DESC`).all(consignor.code);
-
-  const sold = items.filter(i => i.status === 'sold_estate' || i.status === 'sold_store');
-  const active = items.filter(i => i.status === 'estate_listed' || i.status === 'in_stock');
-  // "Owed" is only sales not yet included in a report - once a report picks
-  // up a sale (see reports.js), it's settled into that report/payout and
-  // shouldn't keep showing as newly owed. reportedTotal is the lifetime
-  // paid/reported figure, kept separate so the two never get conflated.
-  const unreported = sold.filter(i => i.reported_in_report_id === null);
-  const reported = sold.filter(i => i.reported_in_report_id !== null);
-  const owedEstate = unreported.filter(i => i.channel === 'estate_sale').reduce((s, i) => s + payoutFor(i), 0);
-  const owedStore = unreported.filter(i => i.channel === 'storefront').reduce((s, i) => s + payoutFor(i), 0);
-  const reportedTotal = reported.reduce((s, i) => s + payoutFor(i), 0);
-
-  res.json({
-    consignor,
-    items,
-    summary: {
-      activeCount: active.length,
-      soldCount: sold.length,
-      owedEstate,
-      owedStore,
-      owedTotal: owedEstate + owedStore,
-      reportedTotal
-    }
-  });
+// Everything a consignor sees in their portal, in one call. Requires a
+// logged-in session for that exact consignor - see portal.js. Without this,
+// anyone who knew or guessed a consignor's code could see another
+// consignor's private sales/financial data.
+app.get('/api/consignors/:code/dashboard', requirePortalSession, (req, res) => {
+  if (req.session.consignor_code !== req.params.code) {
+    return res.status(403).json({ error: 'Not authorized for this consignor' });
+  }
+  const data = getDashboardData(req.params.code);
+  if (!data) return res.status(404).json({ error: 'Consignor not found' });
+  res.json(data);
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));

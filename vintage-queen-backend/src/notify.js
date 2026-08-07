@@ -132,3 +132,23 @@ export async function sendConsignorEmail(report, consignor) {
   const sent = await sendEmail({ to: consignor.contact_email, subject, text });
   if (!sent) throw new Error('SMTP not configured - see .env');
 }
+
+// Portal credentials aren't a financial send, so they go straight to the
+// consignor - no accounting@ review step needed, same as any normal account
+// signup email. No email on file means there's no automated way to hand
+// them the PIN, so let accounting@ know to pass it along some other way.
+export async function sendPortalAccessEmail(consignor) {
+  const url = `${BASE_URL}/portal/login`;
+  const subject = 'Your Vintage Queen consignor portal access';
+  const body = `Hi ${consignor.name}, you can now track your consigned items online any time - see what's sold and what's still available.\n\nLog in at: ${url}\nYour consignor code: ${consignor.code}\nYour PIN: ${consignor.portal_pin}\n\nKeep this PIN private - it's how you access your own sales info.`;
+
+  if (consignor.contact_email) {
+    await sendEmail({ to: consignor.contact_email, subject, text: body });
+  } else {
+    await sendEmail({
+      to: ACCOUNTING_EMAIL,
+      subject: `Needs manual outreach: portal access for ${consignor.name}`,
+      text: `${consignor.name} (${consignor.code}) has no email on file - pass along their portal login some other way.\n\nLog in at: ${url}\nConsignor code: ${consignor.code}\nPIN: ${consignor.portal_pin}${consignor.contact_phone ? `\nPhone on file: ${consignor.contact_phone}` : ''}`
+    });
+  }
+}
