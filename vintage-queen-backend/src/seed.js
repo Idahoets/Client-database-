@@ -43,8 +43,20 @@ const CODE_BY_TASK_GID = {
   '1213890005155385': 'JIMM',  // Jim Moore (Clover: "MOORE, JIM (JIMM)")
   '1212903565511041': 'WOOD',  // Greg Woods (Clover: "Woods, Greg (Wood)")
   '1213204890649682': 'LARR',  // Larrondo, Dana (Clover: "Dana Larrondo (Larr)")
-  '1217197908391185': 'GFA'    // Greg Fairbourn - brand new Asana task, complete from the start (Clover: "Fairbourn, Greg (Gfa)")
+  '1217197908391185': 'GFA',   // Greg Fairbourn - brand new Asana task, complete from the start (Clover: "Fairbourn, Greg (Gfa)")
+  '1217197908391196': 'THAN'   // Tania Hansen - contract dates filled in 8/4 (Clover: "Hansen, Tania", items tagged "Than...")
 };
+
+// Two different people are tagged with the exact same code "WOOD" in Clover
+// - Greg Woods (mapped above, items "Wood22 Drexel Dresser" etc, contract
+// dates on file) and Sherri Wood (category "WOOD SHERRI (WOOD)", items
+// "WOOD5 MISC" etc, no contract dates yet). Real collision, not a typo -
+// there's no way to tell their sales apart by code alone. Do NOT map Sherri
+// Wood under "WOOD" once she has contract dates - she needs a distinct code
+// (e.g. "SWOOD") assigned in Clover going forward, and someone should look
+// at whether her historical "WOOD..." sales can be told apart from Greg's
+// by item-number range (his cluster in the 20s, hers in 1-5) before trusting
+// any past totals under this code.
 
 const insert = db.prepare(`
   INSERT INTO consignors (code, name, type, contract_start, contract_end, estate_sale_date, contact_email, contact_phone)

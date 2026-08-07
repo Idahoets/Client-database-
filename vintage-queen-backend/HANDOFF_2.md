@@ -332,3 +332,161 @@ consignors - nothing more to do there until she does.
    history is in play.
 6. Everything else from HANDOFF_1 that's still open: deployment billing,
    SMTP verification, `ASANA_TOKEN` for standalone runs.
+
+## Update (2026-08-07): full-history category audit re-run with Asana reconnected
+
+Container reset since the last session - local db and prior `ASANA_TOKEN`
+access were gone, but Asana got reconnected via this chat's MCP connector.
+Re-ran the category-vs-Asana audit against **full order history** (36,440
+orders, not just a July window) and fresh Asana data (84 tasks). Mapped
+**Tania Hansen** (`THAN`) - her contract dates were filled in 8/4 and she has
+real sales ("Than29 Jadeite" etc). Confirmed **Dana Smith and Hal Weber are
+still missing contract dates** - not resolved despite earlier belief that
+they were.
+
+**Found a real code collision, not yet acted on - needs an owner decision:**
+Two different people are both tagged `WOOD` in Clover. Greg Woods (already
+mapped, real contract) has items like "Wood22 Drexel Dresser" - Sherri Wood
+(brand new, category "WOOD SHERRI (WOOD)", no contract dates yet) has items
+like "WOOD5 MISC". There's no code-level way to tell their sales apart.
+Documented in `seed.js` as a comment; **do not map Sherri Wood under `WOOD`**
+even once she has contract dates - she needs a distinct code going forward
+(e.g. `SWOOD`), and someone should check whether her historical `WOOD...`
+sales can be separated from Greg's by item-number range (his cluster in the
+20s, hers in 1-5) before trusting any past total under this code.
+
+**"Suans Harrison(SUHA)" is a non-issue** - just a typo'd Clover *category*
+label (should be "Susan"). The actual item names are all tagged correctly
+as `SUHA...`, so it already syncs fine under the existing Sue Harrison
+mapping. Same situation as the earlier Rod Ruter false alarm.
+
+**Correction to an earlier note:** the old "MOORE, JIM (JIMM) -> Reichel,
+Jim (unconfirmed)" guess was wrong. There are two different Jims - Jim
+Moore (already mapped as `JIMM`) and a separate, real Jim Reichel (category
+"Reichel, Jim (JRei)", items tagged `Jrei...`/`JRei...`, `completed: true`,
+due 2026-05-15) who was never mapped at all. He's in the "identified,
+missing dates" list below.
+
+### Identified in Asana, real Clover code found, blocked only on contract dates
+
+All of these have a confirmed Asana task and a confirmed Clover code (from
+real item names, not guessed) - the only blocker is `contract_start`/
+`due_on` being empty in Asana. Split by whether the Asana task is currently
+`completed: false` (likely still active - real, current money) or
+`completed: true` (likely already settled before this system existed, per
+the owner's standing rule - lower priority, but worth a sanity check on the
+bigger dollar amounts).
+
+**`completed: false` - active, no dates yet:**
+
+| Category | Code | Full-history $ | Due on file |
+|---|---|---|---|
+| Smith, Dana (SD) | `SD` | $6,086.00 | none |
+| WEBER, HAL | `WEBER` | $7,269.25 | 2026-09-01 |
+| WOOD SHERRI (WOOD) | **collision - see above, do not map as `WOOD`** | $2,922.50 | none |
+
+**`completed: true` - likely already settled, flagging the totals in case any should be double-checked:**
+
+| Category | Code | Full-history $ | Due on file |
+|---|---|---|---|
+| THOMPSON, DAVE (DT) | `DT` | $77,664.51 | 2026-06-15 |
+| BRENNAN, MIA (MIA) | `MIA` | $27,188.40 | 2026-01-30 |
+| VENABLE, CAROL (VEN) | `VEN` | $23,109.65 | 2026-01-01 |
+| POPE (Pope) | `POPE`/`Pope` | $21,601.54 | 2026-07-10 |
+| HUBBLE, KATI (HUBB) | `HUBB` | $15,669.75 | 2026-07-20 |
+| WOREK, MOLLY (MWOR) | `MWOR` | $14,911.50 | 2026-05-10 |
+| HEATH, NANCY (HEA) | `HEA` | $14,872.10 | 2026-02-15 |
+| Riccardelli (Ric) | `RIC` | $14,382.70 | 2026-02-01 |
+| Meyer, Chazie (Chaz) | `CHAZ` | $12,526.00 | 2026-02-01 |
+| LAND, Lorraine (Lland) | `LLAND` | $9,941.35 | 2026-07-01 |
+| Farson, Janet (Fars) | `FARS` | $5,325.00 | 2026-01-01 |
+| FILLER ESTATE (FIL) | `FIL` | $4,641.00 | 2026-05-10 |
+| Marano, Marilyn (Mar) | `MAR` | $4,583.00 | 2026-04-25 |
+| Johnson Trust (JTRUST) | `JTRUST` | $3,927.00 | 2026-03-01 |
+| Turner Julie | `JTUR` (not "Turner"/"Julie" - confirm before mapping) | $3,330.82 | 2026-06-01 |
+| NAGLE, HIROMI (NAG) | `NAG` | $2,719.00 | 2026-03-01 |
+| BRUSS, TERRY (Bruss) | `BRUSS` | $2,372.00 | 2026-06-01 |
+| Richy, Gwen (Rich) | `RICH` | $2,300.00 | 2026-05-15 |
+| SEBRING, BRETT (BS) | `BS` | $2,099.00 | 2026-03-01 |
+| Harper, Shawna (Harp) | `HARP` | $1,328.00 | 2026-05-15 |
+| Reichel, Jim (JRei) | `JREI` | $558.00 | 2026-05-15 |
+| CROWLEY, ATHENA (CROW) | `CROW` | $392.00 | 2026-03-15 |
+| Turner, Wendy (Wturn) | `WTURN` | $155.00 | 2026-05-20 |
+
+**Owner action needed:** fill in `contract_start` in Asana for all of the
+above (especially the 3 `completed: false` ones - that's current, active
+money). Once filled in, add each `{gid: code}` to `CODE_BY_TASK_GID` in
+`seed.js` - the code is already confirmed from real Clover item names, no
+further lookup needed.
+
+### Not matched to any Asana task at all (45 categories, full history)
+
+Real dollar amounts, but no Asana task name comes close by word-matching -
+these are either people who were never entered as an Asana task, or
+spelling is too different to match automatically. Code (from real item
+names) shown so whoever identifies the person can go straight to adding a
+task + code, no further digging needed. Sorted by dollar amount:
+
+| Category | Code | Full-history $ |
+|---|---|---|
+| COTTINGHAM (TC) | `TC` | $42,946.00 |
+| Harper Estate (MH) | `MH` | $40,894.95 |
+| Hedi Munroe (Mun) | `MUN` | $26,907.24 |
+| CLARK, MOLLIE (MC) | `MC` | $26,626.00 |
+| Miller Judy | `JM` | $20,071.00 |
+| ISENBERG, SARAH (ISEN) | `ISEN` | $16,084.35 |
+| WEEKS, HENRY (HW) | `HW` | $14,631.07 |
+| KNOX, CLORUS (Knox) | `KNOX` - **note: already-mapped `KNOX` is Cloris Knox, likely the same person, spelling drifted ("Clorus" vs "Cloris") - check before treating as separate** | $11,799.50 |
+| VQMH2 | n/a | $11,473.00 |
+| Haskel (Hask) | `HASK` | $11,421.00 |
+| Grill, Beth (Grill) | `GRILL` | $10,387.00 |
+| Ray, Jana (Ray) | `RAY` | $10,185.00 |
+| GENTILMAN, PEBBLES (PEB) | `PEB` | $8,549.00 |
+| Allen, Colleen (CA) | `CA` | $5,828.00 |
+| Laycock (TL) | `TL` | $5,354.00 |
+| FORCIER, VALERIE (VF) | `VF` | $5,316.00 |
+| VMD2025 | `VMD` | $5,114.68 |
+| Cammack (VC) | `VC` | $5,078.00 |
+| Leach (RL) | `RL` | $5,010.00 |
+| VM | `VM` | $4,910.89 |
+| Rogers, Nicki (NR) | `NR` | $4,579.00 |
+| VQ MH Pick | n/a | $4,414.00 |
+| Helen Haause (Haau) | `HAAU` | $3,549.00 |
+| GALLUP, TODD (TODD) | `TODD` | $3,346.00 |
+| Eccles, Cheryl (Cecc) | `CECC` | $3,265.00 |
+| Micah (Micah) | `MICAH` | $3,071.51 |
+| Crouch, John (JC) | `JC` | $2,466.00 |
+| Matthews, Diane (Matt) | `MATT` | $1,875.00 |
+| CLEARANCE | n/a (looks like a house/register category, not a consignor) | $1,831.00 |
+| Roberts, Heidi (HR) | `HR` | $1,796.00 |
+| Knickbocker (Knic) | `KNIC` | $1,666.00 |
+| Sullivan (LS) | `LS` | $1,360.00 |
+| Finn, Elizabeth (Finn) | `FINN` | $1,292.00 |
+| SIMON, CHRIS (SIMON) | `SIMON` | $1,274.00 |
+| Philbrook Marsha (MP) | `MP` | $1,141.76 |
+| Martinez, Martin (MaMa) | `MM` (not "MaMa" as the category suggests) | $650.00 |
+| Loepp (BL) | `BL` | $545.00 |
+| McMinn, Joy (Mcm) | `MCM` | $451.00 |
+| Gieselman, Jan (Gies) | `GIES` | $350.00 |
+| Walker, Gayle (Wal) | `WAL` | $321.00 |
+| Larry Roberts (Rob) | `ROB` | $145.00 |
+| Scott Bennett (Benn) | `BENN` - **note: this looks like it could be the already-mapped `BENN` (Scott Bennet, one T) - check for a duplicate Asana task before treating as a new person** | $143.00 |
+| Lane, Nicole (Lane) | `LANE` | $90.00 |
+
+`VQMH2`, `VQ MH Pick`, and `CLEARANCE` don't look like consignor names at
+all - probably internal/house categories (similar to the already-excluded
+`IETS`/`9000` house stock). Worth a quick owner confirmation rather than
+chasing them as missing people.
+
+**Two likely duplicates worth checking before creating new Asana tasks:**
+`KNOX, CLORUS` (unmatched, $11,799.50) is probably the same person as the
+already-mapped `Cloris Knox` (code `KNOX`) - spelling drifted. `Scott
+Bennett` (unmatched, $143.00) is probably the same person as already-mapped
+`Scott Bennet` (code `BENN`) - one-T/two-T spelling. If confirmed, these
+just need the existing code applied in Clover going forward, not a new
+consignor entry.
+
+Raw audit script + full JSON output saved in this session's scratchpad for
+reference if needed again:
+`/tmp/claude-0/-home-user-Client-database-/55b0a2cb-ff5f-5fa4-9e93-94aff7e97503/scratchpad/audit.mjs`
+and `audit_result.json` (not committed - scratch only).
