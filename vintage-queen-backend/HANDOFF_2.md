@@ -72,16 +72,39 @@ Re-ran the full pipeline with all of this in place:
   orders landing in the live sandbox between runs).
 - **New grand total: $81,171.06.**
 - Note: Herb Wescott's storefront statement came back **"payable now"**
-  (his `due_on` of 6/10 has already passed) - unlike the old estate
-  payouts, this is a *freshly provided* date, not backlog from before the
-  system existed, so it's not obviously covered by the "don't worry about
-  past payouts" instruction. Worth confirming with the owner rather than
-  assuming either way.
+  (his `due_on` of 6/10 has already passed) - **owner said to treat this
+  the same as the past estate payouts: leave it alone, no action.**
 
-Still 33 consignors seeded total (25 + 8 newly-dated), 2 skipped (Greg
-Fairbourn now mapped, Tania Hansen has no Clover code yet), 49 skipped for
-missing contract dates (down from 57 at the start of this session - mostly
-historical/completed tasks that predate contract tracking, not urgent).
+Now 34 consignors seeded total (25 + 8 newly-dated + Greg Fairbourn, a
+brand-new complete Asana task that appeared mid-session, matching a Clover
+category already seen in the original July audit). 1 skipped - Tania
+Hansen, another brand-new complete task, but no Clover sales yet so no
+code to map. 49 skipped for missing contract dates (mostly historical/
+completed tasks that predate contract tracking, not urgent).
+
+## Fixed: reports no longer double-count the same sale
+
+Both report jobs previously summed *every* sold item every time they ran,
+with nothing marking what had already been reported - harmless so far only
+because nothing had actually been sent yet, but it would have re-reported
+(and risked re-paying) the same sales on every subsequent run once real
+sending started.
+
+Added `items.reported_in_report_id` - set the moment a sale is included in
+a generated report (any delivery path: email, manual-outreach flag, or a
+$0/no-op report). Both jobs now only query items where it's still `NULL`.
+`server.js`'s consignor dashboard had the identical issue (summed all-time
+sold items as "owed" regardless of report status) - split into `owedEstate`/
+`owedStore` (unreported only) and a separate `reportedTotal` for the
+lifetime paid/reported figure, so a consignor's portal won't show something
+as still-owed after it's already been reported.
+
+**Verified with a real test**: ran the full pipeline twice back to back
+with no new sales in between. Run 1: $35,961.70 estate + $45,945.36
+storefront (39 reports with money owed). Run 2: **zero** new reports with
+anything owed - every item had already been claimed by run 1's reports.
+Cumulative totals identical before and after run 2, confirming nothing got
+double-counted.
 
 None of these numbers have been approved/sent to anyone - still sitting as
 `pending_review`, same approval-gated flow as always (review email to
