@@ -70,8 +70,15 @@ app.get('/api/consignors/:code/dashboard', (req, res) => {
 
   const sold = items.filter(i => i.status === 'sold_estate' || i.status === 'sold_store');
   const active = items.filter(i => i.status === 'estate_listed' || i.status === 'in_stock');
-  const owedEstate = sold.filter(i => i.channel === 'estate_sale').reduce((s, i) => s + payoutFor(i), 0);
-  const owedStore = sold.filter(i => i.channel === 'storefront').reduce((s, i) => s + payoutFor(i), 0);
+  // "Owed" is only sales not yet included in a report - once a report picks
+  // up a sale (see reports.js), it's settled into that report/payout and
+  // shouldn't keep showing as newly owed. reportedTotal is the lifetime
+  // paid/reported figure, kept separate so the two never get conflated.
+  const unreported = sold.filter(i => i.reported_in_report_id === null);
+  const reported = sold.filter(i => i.reported_in_report_id !== null);
+  const owedEstate = unreported.filter(i => i.channel === 'estate_sale').reduce((s, i) => s + payoutFor(i), 0);
+  const owedStore = unreported.filter(i => i.channel === 'storefront').reduce((s, i) => s + payoutFor(i), 0);
+  const reportedTotal = reported.reduce((s, i) => s + payoutFor(i), 0);
 
   res.json({
     consignor,
@@ -81,7 +88,8 @@ app.get('/api/consignors/:code/dashboard', (req, res) => {
       soldCount: sold.length,
       owedEstate,
       owedStore,
-      owedTotal: owedEstate + owedStore
+      owedTotal: owedEstate + owedStore,
+      reportedTotal
     }
   });
 });

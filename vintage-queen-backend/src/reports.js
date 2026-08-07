@@ -29,6 +29,16 @@ function payoutFor(item) {
   return gross * (1 - commission);
 }
 
+// Claims a set of sold items for a report so they're never summed into a
+// later one - without this, re-running the monthly/daily jobs would re-report
+// (and could re-pay) the same sales every time, since they otherwise stay
+// status='sold_store'/'sold_estate' forever.
+function markItemsReported(items, reportId) {
+  if (!items.length) return;
+  const mark = db.prepare(`UPDATE items SET reported_in_report_id = ? WHERE id = ?`);
+  for (const item of items) mark.run(reportId, item.id);
+}
+
 // Estate sale payout: only items sold at the estate sale, due 7 days after that sale.
 // Run daily - catches each estate sale on or after its due date (not just
 // exactly on it), so a payout doesn't get silently skipped forever if the
@@ -54,6 +64,7 @@ export async function generateEstatePayoutReports() {
 
     const items = db.prepare(`
       SELECT * FROM items WHERE consignor_code = ? AND channel = 'estate_sale' AND status = 'sold_estate'
+        AND reported_in_report_id IS NULL
     `).all(c.code);
 
     const total = items.reduce((sum, i) => sum + payoutFor(i), 0);
@@ -69,8 +80,9 @@ export async function generateEstatePayoutReports() {
     const { delivery_method, recipient } = deliveryFor(c);
 
     if (!delivery_method) {
-      db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'estate_payout', ?, ?)`)
+      const { lastInsertRowid: id } = db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'estate_payout', ?, ?)`)
         .run(c.code, total, details);
+      markItemsReported(items, id);
       await sendNeedsManualOutreachEmail(c, 'estate_payout', total);
       console.log(`Estate payout ready for ${c.name} (${c.code}): $${total.toFixed(2)} - no email on file, flagged for manual outreach.`);
       continue;
@@ -81,6 +93,7 @@ export async function generateEstatePayoutReports() {
       INSERT INTO reports (consignor_code, report_type, amount, details_json, delivery_method, recipient, approval_token)
       VALUES (?, 'estate_payout', ?, ?, ?, ?, ?)
     `).run(c.code, total, details, delivery_method, recipient, token);
+    markItemsReported(items, id);
 
     const report = db.prepare(`SELECT * FROM reports WHERE id = ?`).get(id);
     await sendReviewEmail(report, c);
@@ -104,6 +117,7 @@ export async function generateStorefrontStatements() {
   for (const c of consignors) {
     const items = db.prepare(`
       SELECT * FROM items WHERE consignor_code = ? AND channel = 'storefront' AND status = 'sold_store'
+        AND reported_in_report_id IS NULL
     `).all(c.code);
 
     const total = items.reduce((sum, i) => sum + payoutFor(i), 0);
@@ -119,8 +133,9 @@ export async function generateStorefrontStatements() {
     const { delivery_method, recipient } = deliveryFor(c);
 
     if (!delivery_method) {
-      db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'storefront_statement', ?, ?)`)
+      const { lastInsertRowid: id } = db.prepare(`INSERT INTO reports (consignor_code, report_type, amount, details_json) VALUES (?, 'storefront_statement', ?, ?)`)
         .run(c.code, total, details);
+      markItemsReported(items, id);
       needsManual.push({ consignor: c, amount: total });
       console.log(`Storefront statement for ${c.name} (${c.code}): $${total.toFixed(2)} - no email on file, flagged for manual outreach.`);
       continue;
@@ -130,6 +145,7 @@ export async function generateStorefrontStatements() {
       INSERT INTO reports (consignor_code, report_type, amount, details_json, delivery_method, recipient, approval_token)
       VALUES (?, 'storefront_statement', ?, ?, ?, ?, ?)
     `).run(c.code, total, details, delivery_method, recipient, batchToken);
+    markItemsReported(items, id);
 
     forDigest.push(db.prepare(`SELECT * FROM reports WHERE id = ?`).get(id));
     consignorsByCode[c.code] = c;

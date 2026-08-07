@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS items (
   status TEXT NOT NULL,           -- 'estate_listed' | 'sold_estate' | 'in_stock' | 'sold_store'
   sold_price REAL,
   sold_date TEXT,
+  reported_in_report_id INTEGER REFERENCES reports(id), -- set once this sale is included in a generated report, so it's never summed into a later one
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
