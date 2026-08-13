@@ -1,10 +1,14 @@
 import express from 'express';
+import cron from 'node-cron';
 import 'dotenv/config';
 import db from './db.js';
 import { startScheduledJobs } from './reports.js';
 import { sendConsignorEmail } from './notify.js';
 import { getDashboardData } from './payout.js';
 import portalRouter, { requirePortalSession } from './portal.js';
+import { importItems } from './items.js';
+import { runSync } from './sync.js';
+import seedFromAsana from './seed.js';
 
 const app = express();
 app.use(express.json());
@@ -71,8 +75,23 @@ app.get('/api/consignors/:code/dashboard', requirePortalSession, (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// Keeps the portal and payout numbers current without anyone having to run
+// these by hand. Item import before sync, each cycle - a regular item sold
+// before it was ever imported won't get recorded by sync alone (it updates
+// existing rows, it doesn't create them - see sync.js), so import needs to
+// see it first.
+function startDataSyncJobs() {
+  cron.schedule('0 * * * *', async () => {
+    try { await importItems(); } catch (err) { console.error('Scheduled item import failed:', err.message); }
+    try { await runSync(); } catch (err) { console.error('Scheduled sync failed:', err.message); }
+  });
+  cron.schedule('30 7 * * *', () => seedFromAsana().catch(err => console.error('Scheduled Asana seed failed:', err.message)));
+  console.log('Scheduled jobs registered: hourly item import + sync, daily Asana seed.');
+}
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Vintage Queen backend running on port ${port}`);
+  startDataSyncJobs();
   startScheduledJobs();
 });
