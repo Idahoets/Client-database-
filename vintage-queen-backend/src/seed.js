@@ -44,7 +44,9 @@ const CODE_BY_TASK_GID = {
   '1212903565511041': 'WOOD',  // Greg Woods (Clover: "Woods, Greg (Wood)")
   '1213204890649682': 'LARR',  // Larrondo, Dana (Clover: "Dana Larrondo (Larr)")
   '1217197908391185': 'GFA',   // Greg Fairbourn - brand new Asana task, complete from the start (Clover: "Fairbourn, Greg (Gfa)")
-  '1217197908391196': 'THAN'   // Tania Hansen - contract dates filled in 8/4 (Clover: "Hansen, Tania", items tagged "Than...")
+  '1217197908391196': 'THAN',  // Tania Hansen - contract dates filled in 8/4 (Clover: "Hansen, Tania", items tagged "Than...")
+  '1213204882741974': 'HASK',  // Haskell, Greg and Kelly - contract dates now on file (Clover: "Haskel (Hask)", items tagged "Hask...")
+  '1215842156429846': 'HAAU'   // Helen Hause - contract dates now on file (Clover category is spelled "Haause", items tagged "Haau...")
 };
 
 // Two different people are tagged with the exact same code "WOOD" in Clover
